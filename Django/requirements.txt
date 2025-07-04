@@ -1,0 +1,7 @@
+django
+gunicorn         # Run time binary for django
+psycopg2-binary  # Driver that allows django to connect to sql
+sqlparse
+packaging
+asgiref
+environ
