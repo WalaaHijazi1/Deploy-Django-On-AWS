@@ -105,15 +105,30 @@ resource "aws_route_table_association" "b_public" {
   route_table_id = aws_route_table.public_rt.id
 }
 
-resource "aws_route_table_association" "a_private" {
-  subnet_id      = aws_subnet.private_subnet_a.id
-  route_table_id = aws_route_table.private_rt.id
+resource "aws_security_group" "alb_sg" {
+  name   = "alb-sg"
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    description = "Allow HTTP traffic from anywhere"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "alb-security-group"
+  }
 }
 
-resource "aws_route_table_association" "b_private" {
-  subnet_id      = aws_subnet.private_subnet_b.id
-  route_table_id = aws_route_table.private_rt_b.id
-}
 
 
 resource "aws_alb_target_group" "app_tg" {
@@ -156,7 +171,7 @@ resource "aws_alb" "app_LoadBalancer" {
     name                 = "django-LoadBalancer"
     internal             = false
     load_balancer_type   = "application"
-    security_groups      = [var.alb_security_group.id]
+    security_groups      = [aws_security_group.alb_sg.id]
     subnets              = [aws_subnet.subnet_a.id,aws_subnet.subnet_b.id]
 
     enable_deletion_protection  = true
@@ -178,49 +193,42 @@ resource "aws_alb_listener" "http" {
     }
 }
 
-resource "aws_nat_gateway" "nat_gw_a" {
-    allocation_id = aws_eip.nat_gw_a.id
-    subnet_id     = aws_subnet.subnet_a.id
 
-    tags = {
-        Name = "gw NT A"
-    }
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.subnet_a.id
 }
 
-resource "aws_nat_gateway" "nat_gw_b" {
-    allocation_id  = aws_eip.nat_gw_b.id
-    subnet_id      = aws_subnet.subnet_b.id
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
 
-    tags = {
-        Name = "gw NAT B"
-    }
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main_gw.id
+  }
+
+  tags = {
+    Name = "public-route-table"
+  }
 }
 
-resource "aws_security_group"  "public_rt" {
-    vpc_id = aws_vpc.main.id
-
-    route {
-        cidr_block    = "0.0.0.0/0"
-        gateaway_id   = aws_internet_gateway.main_gw.id
-    }
-}
-
+# Private Route Table (shared)
 resource "aws_route_table" "private_rt" {
-    vpc_id  = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
 
-    route {
-        cidr_block   = "0.0.0.0/0"
-        gateaway_id  = aws_nat_gateway.nat_gw_a.id 
-    }
+  route {
+    cidr_block     = "0.0.0.0/0"
+    gateway_id     = aws_nat_gateway.nat_gw.id
+  }
 }
 
-resource "aws_route_table" "private_rt" {
-    vpc_id  = aws_vpc.main.id
-
-    route {
-        # Any outbound traffic from EC2 instances in this subnet going to the internet will go through the NAT Gateway.
-        cidr_block   = "0.0.0.0/0"
-        gateaway_id  = aws_nat_gateway.nat_gw_b.id 
-    }
+# Associate both private subnets to this one route table
+resource "aws_route_table_association" "a_private" {
+  subnet_id      = aws_subnet.private_subnet_a.id
+  route_table_id = aws_route_table.private_rt.id
 }
 
+resource "aws_route_table_association" "b_private" {
+  subnet_id      = aws_subnet.private_subnet_b.id
+  route_table_id = aws_route_table.private_rt.id
+}

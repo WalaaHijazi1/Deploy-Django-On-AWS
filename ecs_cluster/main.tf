@@ -15,6 +15,7 @@ module "ecr_repo" {
     source =../ecr_repository"
 }
 
+#used to fetch a value from AWS Systems Manager Parameter Store (SSM)
 data "aws_ssm_parameter" "ecs_ami_al2023" {
     name = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
 }
@@ -37,7 +38,7 @@ rwsource "aws_iam_role" "ecs_instance_role" {
 }
 
 
-resource "aws_iam_instance_profile" "ecs_instance_profile" {
+resource "aws_iam_instance_profile" "ecs_instance_profile1" {
   name = "ecsInstanceProfile"
   role = aws_iam_role.ecs_instance_role.name
 }
@@ -53,6 +54,27 @@ resource "aws_db_subnet_group" "db_subnet" {
 }
 
 
+resource "aws_security_group" "db_sg" {
+  name        = "db-sg"
+  description = "Allow MySQL access from ECS EC2 instances only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "MySQL access from ECS"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_instance_sg.id]  # ?? only allow ECS instances
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 
 resource "aws_db_instance" "default" {
   allocated_storage    = 10
@@ -65,7 +87,7 @@ resource "aws_db_instance" "default" {
   parameter_group_name = "default.mysql8.0"
   skip_final_snapshot  = true
   db_subnet_group_name = aws_db_subnet_group.db_subnet.name
-  vpc_security_group_ids = [module.infra.db_sg_id] # You should define a SG that allows ECS access on port 3306
+  vpc_security_group_ids = [aws_security_group.db_sg.id] # You should define a SG that allows ECS access on port 3306
 
   resource "aws_ecs_cluster" "django_cluster" {
     name = "django-cluster"
@@ -80,7 +102,7 @@ resource "aws_ecs_task_definition" "django_task" {
     cpu                          = "256"
     memory                       = "512"
 
-    container_defenetions = jsonencode ([
+    container_definitions = jsonencode ([
         {
             name         = "django"
             image        = "${module.ecr_repo.django_ecr_repo_url}:latest"
@@ -92,7 +114,7 @@ resource "aws_ecs_task_definition" "django_task" {
                     protocol       = "tcp"
                 }
             ]
-            environment [
+            environment = [
                 { name = "DB_HOST", value = aws_db_instance.default.endpoint },
                 { name = "DB_NAME", value = aws_db_instance.default.db_name },
                 { name = "DB_USER", value = aws_db_instance.default.username },
@@ -187,7 +209,7 @@ resource "aws_alb_listener" "http" {
 resource "aws_ecs_service" "django_service" {
     name              = "django_service"
     cluster           = aws_ecs_cluster.django_cluster.id
-    task_defenetion   = aws_ecs_task_defenetion.django_task.arn 
+    task_definition   = aws_ecs_task_definition.django_task.arn
     desired_count     = 2
     launch_type       = "EC2"
 
@@ -208,4 +230,3 @@ resource "aws_ecs_service" "django_service" {
 
     depends_on = [module.infra]
 }
-
