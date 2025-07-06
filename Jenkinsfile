@@ -57,7 +57,7 @@ pipeline {
                             echo "Raw output from terraform: ${outputJson}"
 
                             // Parse JSON string into a map
-                            def outputs = readJSON text: outputJson
+                            def outputs = new groovy.json.JsonSlurper().parseText(outputJson)
 
                             // Extract the ECR repository URL
                             def ecrRepo = outputs['django_ecr_repo_url']['value']
