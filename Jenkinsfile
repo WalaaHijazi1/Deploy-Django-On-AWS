@@ -56,10 +56,10 @@ pipeline {
                             echo "Raw output from terraform: ${outputJson}"
                             
                             def outputs = readJSON text: outputJson
-                            env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
+                            env.ECR_REPO = outputs['django_ecr_repo_url']['value']
                             echo "ECR amazon repo: ${env.ECR_REPO}"
                         } catch (err) {
-                            echo "Failed to get terraform output: ${err}"
+                            echo "Error occurred while parsing terraform output: ${err}"
                             currentBuild.result = 'FAILURE'
                             error("Stopping pipeline due to terraform output failure.")
                         }
