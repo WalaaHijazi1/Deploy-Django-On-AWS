@@ -7,11 +7,6 @@ terraform {
   }
 }
 
-variable "ecr_repo_url" {
-  type        = string
-  description = "ECR image URL for the Django container"
-}
-
 module "infra" {
   source = "../infrastructure"
 }
