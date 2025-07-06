@@ -113,7 +113,7 @@ pipeline {
         }
         stage('Terraform Apply ECS') {
             steps {
-                dir('terraform/ecs_cluster') {
+                dir('ecs_cluster') {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         sh 'terraform init'
                         sh 'terraform apply -auto-approve'
