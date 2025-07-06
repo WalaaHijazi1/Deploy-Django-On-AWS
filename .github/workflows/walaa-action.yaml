@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+jobs:
+  trigger_jenkins:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Trigger Jenkins Job
+        run: |
+          curl -X POST "http://127.0.0.1:8080/job/Deploy-Django-on-AWS/build" \
+            --user "admin:${{ secrets.JENKINS_API_TOKEN }}"
