@@ -12,18 +12,19 @@ module "infra" {
 }
 
 module "ecr_repo" {
-    source =../ecr_repository"
+    source = "../ecr_repository"
 }
+
 
 #used to fetch a value from AWS Systems Manager Parameter Store (SSM)
 data "aws_ssm_parameter" "ecs_ami_al2023" {
     name = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
 }
 
-rwsource "aws_iam_role" "ecs_instance_role" {
+resource "aws_iam_role" "ecs_instance_role" {
     name = "ec2InstanceRole"
 
-    assume_role_policy = jsoncode({
+      assume_role_policy = jsonencode({
         Version = "2012-10-17",
         Statement = [
       {
@@ -109,46 +110,44 @@ resource "aws_db_instance" "default" {
   db_subnet_group_name = aws_db_subnet_group.db_subnet.name
   vpc_security_group_ids = [aws_security_group.db_sg.id] # You should define a SG that allows ECS access on port 3306
 
-  resource "aws_ecs_cluster" "django_cluster" {
-    name = "django-cluster"
-  }
+
+resource "aws_ecs_cluster" "django_cluster" {
+  name = "django-cluster"
 }
 
 
 resource "aws_ecs_task_definition" "django_task" {
-    family                       = "django-task"
-    network_mode                 = "bridge"
-    requiries_compatibilities    = ["EC2"]
-    cpu                          = "256"
-    memory                       = "512"
+  family                   = "django-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"] # or "EC2"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
-    execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-    task_role_arn            = aws_iam_role.ecs_task_role.arn
 
-    container_definitions = jsonencode ([
+  container_definitions = jsonencode([
+    {
+      name      = "django-container"
+      image     = "${module.ecr_repo.django_ecr_repo_url}"
+      portMappings = [
         {
-            name         = "django"
-            image        = "${module.ecr_repo.django_ecr_repo_url}:latest"
-            essential    = true
-            portMappings = [
-                {
-                    containerport  = 8000
-                    hostport       = 8000
-                    protocol       = "tcp"
-                }
-            ]
-            environment = [
-                { name = "DB_HOST", value = aws_db_instance.default.endpoint },
-                { name = "DB_NAME", value = aws_db_instance.default.db_name },
-                { name = "DB_USER", value = aws_db_instance.default.username },
-                { name = "DB_PASSWORD", value = var.aws_db_password}
-            ]
-
-            execution_role_arn   = aws_iam_role.ecs_task_execution_role.arn
-            task_role            = aws_iam_role.ecs_task_role.arn
+          containerPort = 8000
+          hostPort      = 8000
+          protocol      = "tcp"
         }
-    ])
+      ]
+      environment = [
+        {
+          name  = "DATABASE_URL"
+          value = aws_db_instance.default.address
+        }
+      ]
+      essential = true
+    }
+  ])
 }
+
 
 resource "aws_security_group" "ecs_instance_sg" {
   name   = "ecs-instance-sg"
@@ -189,7 +188,7 @@ resource "aws_instance" "ecs_instance_a" {
 }
 
 resource "aws_instance" "ecs_instance_b" {
-  ami                         = data.data.aws_ssm_parameter.ecs_ami_al2023.value
+  ami                         = data.aws_ssm_parameter.ecs_ami_al2023.value
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_b
   associate_public_ip_address = false
@@ -202,7 +201,7 @@ resource "aws_instance" "ecs_instance_b" {
               EOF
 
   tags = {
-    Name = "ecs-instance-a"
+    Name = "ecs-instance-b"
   }
 }
 
@@ -218,7 +217,7 @@ resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
 
 
 resource "aws_alb_listener" "http" {
-    load_balance_arn   = var.alb_arn
+    load_balancer_arn = var.alb_arn
     port               = 80
     protocol           = "HTTP"
 
@@ -228,28 +227,28 @@ resource "aws_alb_listener" "http" {
     }
 }
 
-
 resource "aws_ecs_service" "django_service" {
-    name              = "django_service"
-    cluster           = aws_ecs_cluster.django_cluster.id
-    target_group_arn  = module.infra.target_group_arn
-    desired_count     = 2
-    launch_type       = "EC2"
+  name            = "django-service"
+  cluster         = aws_ecs_cluster.django_cluster.id
+  launch_type     = "EC2"
+  desired_count   = 2
+  task_definition = aws_ecs_task_definition.django_task.arn
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
 
-    
-    network_configuration {
-        subnets         = module.infra.private_subnet_ids
-        security_groups = [module.infra.security_group_id]
-    }
+  network_configuration {
+    subnets          = [module.infra.private_subnet_id_b, module.infra.private_subnet_id_a]
+    security_groups = [aws_security_group.ecs_instance_sg.id]
+    assign_public_ip = false
+  }
 
-    load_balancer {
-        target_group    = module.infra.target_group_arn
-        container_name  = "django"
-        container_port  = 8000
-    }
+  load_balancer {
+    target_group_arn = aws_alb_target_group.app_tg.arn
+    container_name   = "django-container"
+    container_port   = 8000
+  }
 
-    deployment_minimum_healthy_percent = 50
-    deployment_maximum_percent         = 200
-
-    depends_on = [module.infra]
+  depends_on = [
+    aws_alb_listener.http
+  ]
 }
