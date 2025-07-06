@@ -102,6 +102,7 @@ pipeline {
             steps {
                 dir('infrastructure') {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                        sh 'terraform init'
                         sh 'terraform destroy -auto-approve'
                     }
                 }
