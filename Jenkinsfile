@@ -79,18 +79,20 @@ pipeline {
                 dir('Django') {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         sh '''
-                        echo "ECR Repository:  ${env.ECR_REPO}"
+                        ECR_REPO=${ECR_REPO}
+
+                        echo "ECR Repository:  $ECR_REPO"
                         echo "Logging into ECR..."
-                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin  ${env.ECR_REPO}
+                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin  $ECR_REPO
 
                         echo "Building Docker image..."
                         docker build -t django-service:latest .
 
                         echo "Tagging image with ECR repo..."
-                        docker tag django-service:latest  ${env.ECR_REPO}:latest
+                        docker tag django-service:latest  $ECR_REPO:latest
 
                         echo "Pushing image to ECR..."
-                        docker push  ${env.ECR_REPO}:latest
+                        docker push  $.ECR_REPO:latest
                         '''
                     }
                 }
