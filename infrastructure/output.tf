@@ -44,3 +44,7 @@ output "target_group_arn" {
 output "private_subnet_ids" {
   value = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id]
 }
+
+output "security_group_id" {
+  value = aws_security_group.alb_sg.id
+}

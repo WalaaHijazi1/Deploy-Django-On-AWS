@@ -37,6 +37,26 @@ rwsource "aws_iam_role" "ecs_instance_role" {
     })
 }
 
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_attach" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 
 resource "aws_iam_instance_profile" "ecs_instance_profile1" {
   name = "ecsInstanceProfile"
@@ -101,6 +121,9 @@ resource "aws_ecs_task_definition" "django_task" {
     requiries_compatibilities    = ["EC2"]
     cpu                          = "256"
     memory                       = "512"
+
+    execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+    task_role_arn            = aws_iam_role.ecs_task_role.arn
 
     container_definitions = jsonencode ([
         {
@@ -209,7 +232,7 @@ resource "aws_alb_listener" "http" {
 resource "aws_ecs_service" "django_service" {
     name              = "django_service"
     cluster           = aws_ecs_cluster.django_cluster.id
-    task_definition   = aws_ecs_task_definition.django_task.arn
+    target_group_arn  = module.infra.target_group_arn
     desired_count     = 2
     launch_type       = "EC2"
 
@@ -220,7 +243,7 @@ resource "aws_ecs_service" "django_service" {
     }
 
     load_balancer {
-        target_group    = module.infra.target_group_arn.arn
+        target_group    = module.infra.target_group_arn
         container_name  = "django"
         container_port  = 8000
     }
