@@ -40,12 +40,14 @@ pipeline{
         stage('Get Terraform Outputs'){
             steps{
                 script{
+                  sh '''
                     def outputJson=sh(script= 'terraform output -json', returnStdout: true).trim()
                     def outputs = readJSON text: outputJson
 
                     # ECR output:
                     env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
                     echo "ECR amazon repo: ${env.ECR_REPO}"
+                  '''
                 }
             }
         }
