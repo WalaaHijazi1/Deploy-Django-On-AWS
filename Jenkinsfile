@@ -47,37 +47,38 @@ pipeline {
                 }
             }
         }
-        //stage('Get Terraform Outputs') {
-        //    steps {
-        //        dir('ecr_repository') {
-        //            script {
-        //                def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
-        //                def outputs = readJSON text: outputJson
-        //
-        //                // ECR output
-        //                env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
-        //                echo "ECR amazon repo: ${env.ECR_REPO}"
-        //            }
-        //        }
-        //    }
-        //}
+        stage('Get Terraform Outputs') {
+            steps {
+                dir('ecr_repository') {
+                    script {
+                        def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
+                        def outputs = readJSON text: outputJson
+        
+                        // ECR output
+                        env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
+                        echo "ECR amazon repo: ${env.ECR_REPO}"
+                    }
+                }
+            }
+        }
 
         stage('Create A Django Docker Image') {
             steps {
                 dir('Django') {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         sh '''
+                        echo "ECR Repository: ${env.ECR_REPO}
                         echo "Logging into ECR..."
-                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REPO}
+                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${env.ECR_REPO}
 
                         echo "Building Docker image..."
                         docker build -t django-service:latest .
 
                         echo "Tagging image with ECR repo..."
-                        docker tag django-service:latest ${ECR_REPO}:latest
+                        docker tag django-service:latest ${env.ECR_REPO}:latest
 
                         echo "Pushing image to ECR..."
-                        docker push ${ECR_REPO}:latest
+                        docker push ${env.ECR_REPO}:latest
                         '''
                     }
                 }
