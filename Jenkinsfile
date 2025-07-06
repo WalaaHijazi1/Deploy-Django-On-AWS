@@ -47,20 +47,41 @@ pipeline {
                 }
             }
         }
+        //stage('Get Terraform Outputs') {
+        //    steps {
+        //        dir('ecr_repository') {
+        //            script {
+        //                def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
+        //                def outputs = readJSON text: outputJson
+        //
+        //                // ECR output
+        //                env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
+        //                echo "ECR amazon repo: ${env.ECR_REPO}"
+        //            }
+        //        }
+        //    }
+        //}
+
         stage('Get Terraform Outputs') {
             steps {
                 dir('ecr_repository') {
                     script {
-                        def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
-                        def outputs = readJSON text: outputJson
+                        try {
+                            def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
+                            def outputs = readJSON text: outputJson
 
-                        // ECR output
-                        env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
-                        echo "ECR amazon repo: ${env.ECR_REPO}"
+                            // Set env variable
+                            env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
+                            echo "ECR amazon repo: ${env.ECR_REPO}"
+                        } catch (Exception e) {
+                            echo "Failed to get Terraform output: ${e.getMessage()}"
+                            error("Stopping pipeline due to Terraform output failure")
+                        }
                     }
                 }
             }
         }
+
         stage('Create A Django Docker Image') {
             steps {
                 dir('Django') {
