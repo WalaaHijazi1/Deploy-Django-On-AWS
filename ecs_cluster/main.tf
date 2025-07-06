@@ -11,10 +11,6 @@ module "infra" {
   source = "../infrastructure"
 }
 
-module "ecr_repo" {
-  source = "../ecr_repository"
-}
-
 provider "aws" {
   region = "ap-south-1"
 }
