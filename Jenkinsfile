@@ -98,9 +98,15 @@ pipeline {
                 }
             }
         }
-        
-
-
+        stage('Terraform Destroy Previous') {
+            steps {
+                dir('infrastructure') {
+                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                        sh 'terraform destroy -auto-approve'
+                    }
+                }
+            }
+        }
         stage('Build Infrastructure') {
             steps {
                 dir('infrastructure') {
