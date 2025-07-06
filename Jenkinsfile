@@ -22,6 +22,7 @@ pipeline {
         stage('Create ECR Repository - Plan') {
             steps {
                 dir('ecr_repository') {
+                    sh'terraform destroy -auto-approve'
                     sh 'terraform init'
                     sh 'terraform plan'
                 }
@@ -46,7 +47,7 @@ pipeline {
 
                         // ECR output
                         env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
-                        echo "✅ ECR amazon repo: ${env.ECR_REPO}"
+                        echo "ECR amazon repo: ${env.ECR_REPO}"
                     }
                 }
             }
