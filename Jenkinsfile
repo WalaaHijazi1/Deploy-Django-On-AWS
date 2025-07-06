@@ -40,14 +40,12 @@ pipeline{
         stage('Get Terraform Outputs'){
             steps{
                 script{
-                  sh '''
                     def outputJson=sh(script= 'terraform output -json', returnStdout: true).trim()
                     def outputs = readJSON text: outputJson
 
                     # ECR output:
                     env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
                     echo "ECR amazon repo: ${env.ECR_REPO}"
-                  '''
                 }
             }
         }
@@ -115,7 +113,7 @@ pipeline{
 
     Your Jenkins pipeline for deploying the Django app to AWS has finished with result: ${currentBuild.result}.
 
-    Attached are the Terraform state files for your reference.
+    Attached are the Terraform state/biuld.log files for your reference.
 
     Regards,
     Jenkins
