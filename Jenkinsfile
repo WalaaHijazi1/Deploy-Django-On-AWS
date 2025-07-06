@@ -121,6 +121,10 @@ pipeline {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         sh '''
                             terraform init
+                            
+                            terraform import aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole
+                            terraform import aws_iam_instance_profile.ecs_instance_profile ecsInstanceProfile
+
                             terraform apply -auto-approve -var "ecr_repo_url=${ECR_REPO}"
                         '''
                     }
