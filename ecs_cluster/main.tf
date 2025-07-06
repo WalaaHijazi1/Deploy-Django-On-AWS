@@ -118,8 +118,8 @@ resource "aws_ecs_cluster" "django_cluster" {
 
 resource "aws_ecs_task_definition" "django_task" {
   family                   = "django-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"] # or "EC2"
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
@@ -235,12 +235,6 @@ resource "aws_ecs_service" "django_service" {
   task_definition = aws_ecs_task_definition.django_task.arn
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
-
-  network_configuration {
-    subnets          = [module.infra.private_subnet_id_b, module.infra.private_subnet_id_a]
-    security_groups = [aws_security_group.ecs_instance_sg.id]
-    assign_public_ip = false
-  }
 
   load_balancer {
     target_group_arn = module.infra.target_group_arn

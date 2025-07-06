@@ -19,6 +19,23 @@ pipeline {
                 }
             }
         }
+        stage('Destroy All Terraform Modules') {
+            steps {
+                withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                    script {
+                        def modules = ['ecs_cluster', 'infrastructure', 'ecr_repository']
+                        modules.each { dirName ->
+                            dir(dirName) {
+                                sh '''
+                                terraform init || true
+                                terraform destroy -auto-approve || true
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
         stage('Destroy ECR Repository') {
             steps {
                 dir('ecr_repository') {
