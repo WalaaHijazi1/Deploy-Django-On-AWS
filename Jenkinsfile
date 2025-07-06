@@ -61,16 +61,6 @@ pipeline {
                 }
             }
         }
-        stage('Destroy ECR Repository') {
-            steps {
-                dir('ecr_repository') {
-                    sh '''
-                        terraform init
-                        terraform destroy -auto-approve
-                    '''
-                }
-            }
-        }
         stage('Create ECR Repository - Plan') {
             steps {
                 dir('ecr_repository') {
