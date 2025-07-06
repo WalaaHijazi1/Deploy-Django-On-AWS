@@ -98,10 +98,13 @@ pipeline {
                 }
             }
         }
+        
+
+
         stage('Build Infrastructure') {
             steps {
                 dir('infrastructure') {
-                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                    withCredentials([usernamePassword(credentialsId: 'aws_credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh 'terraform init'
                         sh 'terraform apply -auto-approve'
                     }
@@ -111,7 +114,7 @@ pipeline {
         stage('Terraform Apply ECS') {
             steps {
                 dir('terraform/ecs_cluster') {
-                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                    withCredentials([usernamePassword(credentialsId: 'aws_credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh 'terraform init'
                         sh 'terraform apply -auto-approve'
                     }
