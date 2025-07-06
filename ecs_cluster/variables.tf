@@ -10,3 +10,8 @@ variable "aws_db_password" {
 	default     = "walaa2511"
 }
 
+variable "ecr_repo_url" {
+  description = "ECR Repository URL for ECS container image"
+  type        = string
+}
+
