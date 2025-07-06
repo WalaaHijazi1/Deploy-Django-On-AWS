@@ -52,14 +52,21 @@ pipeline {
                 dir('ecr_repository') {
                     script {
                         try {
+                            // Get raw JSON string from Terraform
                             def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
                             echo "Raw output from terraform: ${outputJson}"
-                            
+
+                            // Parse JSON string into a map
                             def outputs = readJSON text: outputJson
-                            env.ECR_REPO = outputs['django_ecr_repo_url']['value']
-                            echo "ECR amazon repo: ${env.ECR_REPO}"
+
+                            // Extract the ECR repository URL
+                            def ecrRepo = outputs['django_ecr_repo_url']['value']
+                            echo "Parsed ECR Repo: ${ecrRepo}"
+
+                            // Save it to environment variable
+                            env.ECR_REPO = ecrRepo
                         } catch (err) {
-                            echo "Error occurred while parsing terraform output: ${err}"
+                            echo "Error while reading terraform output: ${err}"
                             currentBuild.result = 'FAILURE'
                             error("Stopping pipeline due to terraform output failure.")
                         }
@@ -67,7 +74,6 @@ pipeline {
                 }
             }
         }
-
         stage('Create A Django Docker Image') {
             steps {
                 dir('Django') {
