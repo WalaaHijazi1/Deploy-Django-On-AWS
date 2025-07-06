@@ -11,14 +11,6 @@ pipeline {
                 git credentialsId: 'my_secret_token', branch: 'main', url: 'https://github.com/WalaaHijazi1/Deploy-Django-On-AWS.git'
             }
         }
-        stage('Access AWS') {
-            steps {
-                withCredentials([aws(credentialsId: 'aws_credentials')]) {
-                    sh 'aws --version'
-                    sh 'aws ec2 describe-instances'
-                }
-            }
-        }
         stage('Destroy All Terraform Modules') {
             steps {
                 withCredentials([aws(credentialsId: 'aws_credentials')]) {
@@ -121,10 +113,7 @@ pipeline {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         sh '''
                             terraform init
-                            
-                            terraform import aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole
-                            terraform import aws_iam_instance_profile.ecs_instance_profile ecsInstanceProfile
-
+                            terraform plan -var "ecr_repo_url=${ECR_REPO}"
                             terraform apply -auto-approve -var "ecr_repo_url=${ECR_REPO}"
                         '''
                     }

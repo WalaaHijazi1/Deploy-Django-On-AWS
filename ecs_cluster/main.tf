@@ -7,6 +7,10 @@ terraform {
   }
 }
 
+variable "ecr_repo_url" {
+  type        = string
+  description = "ECR image URL for the Django container"
+}
 
 module "infra" {
   source = "../infrastructure"
@@ -24,14 +28,29 @@ resource "aws_ecs_cluster" "django_cluster" {
   name = "django-cluster"
 }
 
-data "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
-}
-
 data "aws_iam_instance_profile" "ecs_instance_profile" {
   name = "ecsInstanceProfile"
 }
 
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
 
 resource "aws_security_group" "ecs_instance_sg" {
   name   = "ecs-instance-sg"
@@ -56,7 +75,7 @@ resource "aws_instance" "ecs_instance_a" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_a
-  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
+  iam_instance_profile        = data.aws_iam_instance_profile.ecs_instance_profile.name
   associate_public_ip_address = false
   security_groups             = [aws_security_group.ecs_instance_sg.id]
 
@@ -74,7 +93,7 @@ resource "aws_instance" "ecs_instance_b" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_b
-  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
+  iam_instance_profile        = data.aws_iam_instance_profile.ecs_instance_profile.name
   associate_public_ip_address = false
   security_groups             = [aws_security_group.ecs_instance_sg.id]
 
