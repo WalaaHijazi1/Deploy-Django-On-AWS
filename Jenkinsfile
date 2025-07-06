@@ -19,6 +19,48 @@ pipeline {
                 }
             }
         }
+                // === DESTROY ALL SERVICES ===
+        stage('Destroy ECS Resources') {
+            steps {
+                dir('ecs_cluster') {
+                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                        sh '''
+                            rm -rf .terraform terraform.tfstate terraform.tfstate.backup
+                            terraform init -reconfigure
+                            terraform destroy -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Destroy ECR Repository') {
+            steps {
+                dir('ecr_repository') {
+                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                        sh '''
+                            rm -rf .terraform terraform.tfstate terraform.tfstate.backup
+                            terraform init -reconfigure
+                            terraform destroy -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Destroy Infrastructure') {
+            steps {
+                dir('infrastructure') {
+                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                        sh '''
+                            rm -rf .terraform terraform.tfstate terraform.tfstate.backup
+                            terraform init -reconfigure
+                            terraform destroy -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
         stage('Destroy ECR Repository') {
             steps {
                 dir('ecr_repository') {
