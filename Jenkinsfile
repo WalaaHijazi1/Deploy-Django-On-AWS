@@ -51,12 +51,18 @@ pipeline {
             steps {
                 dir('ecr_repository') {
                     script {
-                        def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
-                        def outputs = readJSON text: outputJson
-        
-                        // ECR output
-                        env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
-                        echo "ECR amazon repo: ${env.ECR_REPO}"
+                        try {
+                            def outputJson = sh(script: 'terraform output -json', returnStdout: true).trim()
+                            echo "Raw output from terraform: ${outputJson}"
+                            
+                            def outputs = readJSON text: outputJson
+                            env.ECR_REPO = outputs["django_ecr_repo_url"]["value"]
+                            echo "ECR amazon repo: ${env.ECR_REPO}"
+                        } catch (err) {
+                            echo "Failed to get terraform output: ${err}"
+                            currentBuild.result = 'FAILURE'
+                            error("Stopping pipeline due to terraform output failure.")
+                        }
                     }
                 }
             }
