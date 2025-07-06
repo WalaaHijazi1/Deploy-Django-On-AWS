@@ -78,14 +78,14 @@ resource "aws_db_subnet_group" "db_subnet" {
 resource "aws_security_group" "db_sg" {
   name        = "db-sg"
   description = "Allow MySQL access from ECS EC2 instances only"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = module.infra.vpc_id
 
   ingress {
     description     = "MySQL access from ECS"
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_instance_sg.id]  # ?? only allow ECS instances
+    security_groups = [aws_security_group.ecs_instance_sg.id]
   }
 
   egress {
@@ -174,7 +174,7 @@ resource "aws_instance" "ecs_instance_a" {
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_a
   associate_public_ip_address = false
-  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile1.name
   security_groups             = [aws_security_group.ecs_instance_sg.id]
 
   user_data = <<-EOF
@@ -192,7 +192,7 @@ resource "aws_instance" "ecs_instance_b" {
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_b
   associate_public_ip_address = false
-  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile1.name
   security_groups             = [aws_security_group.ecs_instance_sg.id]
 
   user_data = <<-EOF
@@ -217,13 +217,13 @@ resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
 
 
 resource "aws_alb_listener" "http" {
-    load_balancer_arn = var.alb_arn
+    load_balancer_arn  = module.infra.alb_arn
     port               = 80
     protocol           = "HTTP"
 
     default_action{
         type             = "forward"
-	    target_group_arn = var.target_group_arn
+	    target_group_arn   = module.infra.target_group_arn
     }
 }
 
@@ -243,10 +243,11 @@ resource "aws_ecs_service" "django_service" {
   }
 
   load_balancer {
-    target_group_arn = aws_alb_target_group.app_tg.arn
+    target_group_arn = module.infra.target_group_arn
     container_name   = "django-container"
     container_port   = 8000
   }
+
 
   depends_on = [
     aws_alb_listener.http
