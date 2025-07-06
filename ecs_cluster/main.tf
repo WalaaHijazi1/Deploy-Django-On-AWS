@@ -7,8 +7,8 @@ terraform {
   }
 }
 
-module 'ecr_repo' {
-  source = '../ecr_repository'
+module "ecr_repo" {
+  source = "../ecr_repository"
 }
 
 module "infra" {
