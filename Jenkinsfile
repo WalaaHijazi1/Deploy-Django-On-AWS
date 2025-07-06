@@ -120,14 +120,14 @@ pipeline {
                 dir('ecs_cluster') {
                     withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         sh '''
-                            terraform import aws_iam_role.ecs_instance_role ecsInstanceRole
-                            terraform import aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole
-                            terraform import aws_iam_role_policy_attachment.ecs_instance_attach ecsInstanceRole/AmazonEC2ContainerServiceforEC2Role
-                            terraform import aws_iam_role_policy_attachment.ecs_task_execution_attach ecsTaskExecutionRole/AmazonECSTaskExecutionRolePolicy
-                            terraform import aws_iam_instance_profile.ecs_instance_profile ecsInstanceProfile
-
-                            
                             terraform init
+
+                            terraform import -var="ecr_repo_url=${ECR_REPO}" aws_iam_role.ecs_instance_role ecsInstanceRole
+                            terraform import -var="ecr_repo_url=${ECR_REPO}" aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole
+                            terraform import -var="ecr_repo_url=${ECR_REPO}" aws_iam_role_policy_attachment.ecs_instance_attach ecsInstanceRole/AmazonEC2ContainerServiceforEC2Role
+                            terraform import -var="ecr_repo_url=${ECR_REPO}" aws_iam_role_policy_attachment.ecs_task_execution_attach ecsTaskExecutionRole/AmazonECSTaskExecutionRolePolicy
+                            terraform import -var="ecr_repo_url=${ECR_REPO}" aws_iam_instance_profile.ecs_instance_profile ecsInstanceProfile
+
                             terraform apply -auto-approve -var "ecr_repo_url=${ECR_REPO}"
                         '''
                     }

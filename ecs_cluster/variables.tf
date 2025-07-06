@@ -13,5 +13,6 @@ variable "aws_db_password" {
 variable "ecr_repo_url" {
   description = "ECR Repository URL for ECS container image"
   type        = string
+  default     = "placeholder"  # will be overridden in pipeline anyway
 }
 
