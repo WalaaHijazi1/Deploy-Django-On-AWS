@@ -220,7 +220,7 @@ resource "aws_ecs_service" "django_service" {
     }
 
     load_balancer {
-        target_group    = aws_alb_target_group.django_tg.arn
+        target_group    = module.infra.target_group_arn.arn
         container_name  = "django"
         container_port  = 8000
     }

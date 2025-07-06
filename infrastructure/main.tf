@@ -89,11 +89,9 @@ resource "aws_subnet" "private_subnet_b" {
   }
 }
 
-
 resource "aws_eip" "nat" {
-    vpc  = true
+  domain = "vpc"
 }
-
 
 resource "aws_route_table_association" "a_public" {
   subnet_id      = aws_subnet.subnet_a.id
@@ -150,20 +148,6 @@ resource "aws_alb_target_group" "app_tg" {
     tags = {
 	Name = "Django-tg"
     }
-}
-
-
-resource "aws_alb_target_group_attachment" "web_a" {
-	target_group_arn  = aws_alb_target_group.app_tg.arn
-	target_id         = aws_instance.public_instance_a.id
-	port              = 80
-}
-
-
-resource "aws_alb_target_group_attachment" "web_b" {
-	target_group_arn  = aws_alb_target_group.app_tg.arn
-	target_id         = aws_instance.public_instance_b.id
-	port              = 80
 }
 
 
