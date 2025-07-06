@@ -92,7 +92,7 @@ pipeline {
                         docker tag django-service:latest  $ECR_REPO:latest
 
                         echo "Pushing image to ECR..."
-                        docker push  $.ECR_REPO:latest
+                        docker push  $ECR_REPO:latest
                         '''
                     }
                 }
