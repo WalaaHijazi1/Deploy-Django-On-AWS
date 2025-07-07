@@ -115,17 +115,22 @@ resource "aws_security_group" "db_sg" {
 }
 
 resource "aws_db_instance" "default" {
-  allocated_storage    = 10
-  db_name              = "djangodb"
-  engine               = "mysql"
-  engine_version       = "8.0"
-  instance_class       = "db.t3.micro"
-  username             = "admin2511"
-  password             = var.aws_db_password
-  parameter_group_name = "default.mysql8.0"
-  skip_final_snapshot  = true
-  db_subnet_group_name = aws_db_subnet_group.db_subnet.name
-  vpc_security_group_ids = [aws_security_group.db_sg.id] # You should define a SG that allows ECS access on port 3306
+  allocated_storage      = 10
+  db_name                = "djangodb"
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  instance_class         = "db.t3.micro"
+  username               = "admin2511"
+  password               = var.aws_db_password
+  parameter_group_name   = "default.mysql8.0"
+  skip_final_snapshot    = true
+  db_subnet_group_name   = [aws_security_group.rds_sg.id]
+  skip_final_snapshot    = true
+
+  
+  tags = {
+    Name = "django-rds-postgres"
+  }
 }
 
 # Security Group for RDS (PostgreSQL)
@@ -163,7 +168,7 @@ resource "aws_db_instance" "django_db" {
   name                   = "mydb"
   username               = "user"
   password               = "pass1234"
-  db_subnet_group_name   = aws_db_subnet_group.django_db_subnet_group.name
+  db_subnet_group_name   = [module.infra.db_subnet_group_name]
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
   skip_final_snapshot    = true
 
