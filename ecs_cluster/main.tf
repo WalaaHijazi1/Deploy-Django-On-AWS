@@ -70,33 +70,26 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
   role = aws_iam_role.ecs_instance_role.name
 }
 
+# Create private route table ===========================================
+resource "aws_route_table" "private_route_table" {
+  vpc_id = module.infra.vpc_id
+  tags = {
+    Name = "private-route-table"
+  }
+}
+
+# Associate with private subnets
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = module.infra.private_subnet_id_a
+  route_table_id = aws_route_table.private_route_table.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = module.infra.private_subnet_id_b
+  route_table_id = aws_route_table.private_route_table.id
+}
+
 # VPC Endpoints for ECR (CRITICAL for private subnets) ================
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id            = module.infra.vpc_id
-  service_name      = "com.amazonaws.ap-south-1.ecr.dkr"
-  vpc_endpoint_type = "Interface"
-  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
-  subnet_ids        = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
-  private_dns_enabled = true
-}
-
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id            = module.infra.vpc_id
-  service_name      = "com.amazonaws.ap-south-1.ecr.api"
-  vpc_endpoint_type = "Interface"
-  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
-  subnet_ids        = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
-  private_dns_enabled = true
-}
-
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = module.infra.vpc_id
-  service_name      = "com.amazonaws.ap-south-1.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [module.infra.private_route_table_id]
-}
-
-# Security Groups =====================================================
 resource "aws_security_group" "vpc_endpoint_sg" {
   name        = "vpc-endpoint-sg"
   description = "Allow HTTPS to VPC endpoints"
@@ -118,6 +111,32 @@ resource "aws_security_group" "vpc_endpoint_sg" {
   }
 }
 
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = module.infra.vpc_id
+  service_name        = "com.amazonaws.ap-south-1.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  security_group_ids  = [aws_security_group.vpc_endpoint_sg.id]
+  subnet_ids          = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = module.infra.vpc_id
+  service_name        = "com.amazonaws.ap-south-1.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  security_group_ids  = [aws_security_group.vpc_endpoint_sg.id]
+  subnet_ids          = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = module.infra.vpc_id
+  service_name      = "com.amazonaws.ap-south-1.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private_route_table.id]  # Use new route table
+}
+
+# Security Groups =====================================================
 resource "aws_security_group" "ecs_instance_sg" {
   name   = "ecs-instance-sg"
   vpc_id = module.infra.vpc_id
@@ -333,6 +352,9 @@ resource "aws_ecs_service" "django_service" {
 
   depends_on = [
     aws_iam_role_policy_attachment.ecr_access,
-    aws_db_instance.default
+    aws_db_instance.default,
+    aws_vpc_endpoint.ecr_dkr,
+    aws_vpc_endpoint.ecr_api,
+    aws_vpc_endpoint.s3
   ]
 }
