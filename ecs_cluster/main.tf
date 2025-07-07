@@ -123,26 +123,24 @@ resource "aws_db_instance" "default" {
   username               = "admin2511"
   password               = var.aws_db_password
   parameter_group_name   = "default.mysql8.0"
-  skip_final_snapshot    = true
-  db_subnet_group_name   = [aws_security_group.rds_sg.id]
+  db_subnet_group_name   = module.infra.db_subnet_group_name
+  vpc_security_group_ids = [aws_security_group.db_sg.id]  # or use rds_sg if that's what you created
   skip_final_snapshot    = true
 
-  
   tags = {
-    Name = "django-rds-postgres"
+    Name = "django-rds-mysql"
   }
 }
 
-# Security Group for RDS (PostgreSQL)
 resource "aws_security_group" "rds_sg" {
   name        = "rds-sg"
-  description = "Allow ECS instances to access RDS on port 5432"
+  description = "Allow ECS instances to access RDS on port 3306"
   vpc_id      = module.infra.vpc_id
 
   ingress {
-    description     = "Allow PostgreSQL access from ECS instances"
-    from_port       = 5432
-    to_port         = 5432
+    description     = "Allow MySQL access from ECS instances"
+    from_port       = 3306
+    to_port         = 3306
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_instance_sg.id]
   }
@@ -159,23 +157,6 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
-# PostgreSQL RDS Instance
-resource "aws_db_instance" "django_db" {
-  allocated_storage      = 20
-  engine                 = "postgres"
-  engine_version         = "14"
-  instance_class         = "db.t3.micro"
-  name                   = "mydb"
-  username               = "user"
-  password               = "pass1234"
-  db_subnet_group_name   = [module.infra.db_subnet_group_name]
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  skip_final_snapshot    = true
-
-  tags = {
-    Name = "django-rds-postgres"
-  }
-}
 
 # ECS Instance A
 resource "aws_instance" "ecs_instance_a" {
