@@ -221,7 +221,7 @@ resource "aws_ecs_task_definition" "django_task" {
     }],
     environment = [{
       name  = "DATABASE_URL"
-      value = "postgres://user:pass@rds-endpoint:5432/dbname"
+      value = "mysql://admin2511:${var.aws_db_password}@rds-endpoint:3306/djangodb"
     }],
     essential = true
   }])
