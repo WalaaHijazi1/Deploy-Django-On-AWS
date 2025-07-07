@@ -71,52 +71,14 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 }
 
 # Create private route table ===========================================
-resource "aws_route_table" "private_route_table" {
-  vpc_id = module.infra.vpc_id
-  tags = {
-    Name = "private-route-table"
-  }
-}
 
-# Associate with private subnets
-resource "aws_route_table_association" "private_a" {
-  subnet_id      = module.infra.private_subnet_id_a
-  route_table_id = aws_route_table.private_route_table.id
-}
-
-resource "aws_route_table_association" "private_b" {
-  subnet_id      = module.infra.private_subnet_id_b
-  route_table_id = aws_route_table.private_route_table.id
-}
-
-# VPC Endpoints for ECR (CRITICAL for private subnets) ================
-resource "aws_security_group" "vpc_endpoint_sg" {
-  name        = "vpc-endpoint-sg"
-  description = "Allow HTTPS to VPC endpoints"
-  vpc_id      = module.infra.vpc_id
-
-  ingress {
-    description = "HTTPS from ECS instances"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    security_groups = [aws_security_group.ecs_instance_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
+# In ECS main.tf
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = module.infra.vpc_id
   service_name        = "com.amazonaws.ap-south-1.ecr.dkr"
   vpc_endpoint_type   = "Interface"
-  security_group_ids  = [aws_security_group.vpc_endpoint_sg.id]
-  subnet_ids          = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
+  security_group_ids  = [aws_security_group.ecs_instance_sg.id]  # Use existing SG
+  subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
   private_dns_enabled = true
 }
 
@@ -124,17 +86,19 @@ resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = module.infra.vpc_id
   service_name        = "com.amazonaws.ap-south-1.ecr.api"
   vpc_endpoint_type   = "Interface"
-  security_group_ids  = [aws_security_group.vpc_endpoint_sg.id]
-  subnet_ids          = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
+  security_group_ids  = [aws_security_group.ecs_instance_sg.id]  # Use existing SG
+  subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
   private_dns_enabled = true
 }
 
+# In ECS main.tf
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = module.infra.vpc_id
   service_name      = "com.amazonaws.ap-south-1.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private_route_table.id]  # Use new route table
+  route_table_ids   = [module.infra.private_route_table_id]  # Use infra module's route table
 }
+
 
 # Security Groups =====================================================
 resource "aws_security_group" "ecs_instance_sg" {
@@ -238,7 +202,7 @@ resource "aws_cloudwatch_log_group" "ecs_logs" {
 resource "aws_instance" "ecs_instance_a" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
-  subnet_id                   = module.infra.private_subnet_id_a
+  subnet_id                   = module.infra.private_subnet_ids[0]
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
@@ -257,7 +221,7 @@ resource "aws_instance" "ecs_instance_a" {
 resource "aws_instance" "ecs_instance_b" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
-  subnet_id                   = module.infra.private_subnet_id_b
+  subnet_id                   = module.infra.private_subnet_ids[1]
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
