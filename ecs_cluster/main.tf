@@ -95,6 +95,84 @@ resource "aws_security_group" "ecs_instance_sg" {
   }
 }
 
+resource "aws_security_group" "db_sg" {
+  name   = "db-sg"
+  vpc_id = module.infra.vpc_id
+
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_instance_sg.id] # Allow ECS instances to connect
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_instance" "default" {
+  allocated_storage    = 10
+  db_name              = "djangodb"
+  engine               = "mysql"
+  engine_version       = "8.0"
+  instance_class       = "db.t3.micro"
+  username             = "admin2511"
+  password             = var.aws_db_password
+  parameter_group_name = "default.mysql8.0"
+  skip_final_snapshot  = true
+  db_subnet_group_name = aws_db_subnet_group.db_subnet.name
+  vpc_security_group_ids = [aws_security_group.db_sg.id] # You should define a SG that allows ECS access on port 3306
+}
+
+# Security Group for RDS (PostgreSQL)
+resource "aws_security_group" "rds_sg" {
+  name        = "rds-sg"
+  description = "Allow ECS instances to access RDS on port 5432"
+  vpc_id      = module.infra.vpc_id
+
+  ingress {
+    description     = "Allow PostgreSQL access from ECS instances"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_instance_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "rds-sg"
+  }
+}
+
+# PostgreSQL RDS Instance
+resource "aws_db_instance" "django_db" {
+  allocated_storage      = 20
+  engine                 = "postgres"
+  engine_version         = "14"
+  instance_class         = "db.t3.micro"
+  name                   = "mydb"
+  username               = "user"
+  password               = "pass1234"
+  db_subnet_group_name   = aws_db_subnet_group.django_db_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  skip_final_snapshot    = true
+
+  tags = {
+    Name = "django-rds-postgres"
+  }
+}
+
+# ECS Instance A
 resource "aws_instance" "ecs_instance_a" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
@@ -105,7 +183,8 @@ resource "aws_instance" "ecs_instance_a" {
 
   user_data = <<-EOF
               #!/bin/bash
-              echo ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name} >> /etc/ecs/ecs.config
+              echo "ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name}" >> /etc/ecs/ecs.config
+              yum install -y ecs-init
               systemctl enable --now ecs
               EOF
 
@@ -114,6 +193,7 @@ resource "aws_instance" "ecs_instance_a" {
   }
 }
 
+# ECS Instance B
 resource "aws_instance" "ecs_instance_b" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
@@ -124,7 +204,8 @@ resource "aws_instance" "ecs_instance_b" {
 
   user_data = <<-EOF
               #!/bin/bash
-              echo ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name} >> /etc/ecs/ecs.config
+              echo "ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name}" >> /etc/ecs/ecs.config
+              yum install -y ecs-init
               systemctl enable --now ecs
               EOF
 
@@ -132,6 +213,7 @@ resource "aws_instance" "ecs_instance_b" {
     Name = "ecs-instance-b"
   }
 }
+
 
 resource "aws_ecs_task_definition" "django_task" {
   family                   = "django-task"
