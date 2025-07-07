@@ -115,6 +115,7 @@ pipeline {
                             terraform init
                             terraform import aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole || true
                             terraform plan -var "ecr_repo_url=${ECR_REPO}"
+                            terraform taint aws_instance.ecs_instance_a
                             terraform apply -auto-approve -var "ecr_repo_url=${ECR_REPO}"
                         '''
                     }
