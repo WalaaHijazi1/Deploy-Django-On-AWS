@@ -17,6 +17,7 @@ module "infra" {
 }
 
 # ECS EC2 IAM Role
+# Create ECS instance role
 resource "aws_iam_role" "ecs_instance_role" {
   name = "ecsInstanceRole"
   assume_role_policy = jsonencode({
@@ -41,18 +42,30 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
   role = aws_iam_role.ecs_instance_role.name
 }
 
-data "aws_ssm_parameter" "ecs_ami" {
-  name = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
-}
-
-data "aws_iam_role" "ecs_task_execution_role" {
+# ECS task execution role
+resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = data.aws_iam_role.ecs_task_execution_role.name
+resource "aws_iam_role_policy_attachment" "ecs_task_exec_attach" {
+  role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
+
+#  This is all you need. DELETE the following blocks completely:
+# - data "aws_iam_role" "ecs_task_execution_role"
+# - resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy"
+
 
 resource "aws_ecs_cluster" "django_cluster" {
   name = "django-cluster"
@@ -121,8 +134,8 @@ resource "aws_ecs_task_definition" "django_task" {
   requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = data.aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = data.aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([{
     name      = "django-container"
