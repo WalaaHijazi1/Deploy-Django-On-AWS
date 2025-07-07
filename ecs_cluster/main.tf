@@ -16,6 +16,11 @@ module "infra" {
   source = "../infrastructure"
 }
 
+data "aws_ssm_parameter" "ecs_ami" {
+  name = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+}
+
+
 # ECS EC2 IAM Role
 # Create ECS instance role
 resource "aws_iam_role" "ecs_instance_role" {
@@ -139,7 +144,8 @@ resource "aws_ecs_task_definition" "django_task" {
 
   container_definitions = jsonencode([{
     name      = "django-container"
-    image     = var.ecr_repo_url,
+    image     = var.ecr_repo_url
+    
     portMappings = [{
       containerPort = 8000
       hostPort      = 8000
