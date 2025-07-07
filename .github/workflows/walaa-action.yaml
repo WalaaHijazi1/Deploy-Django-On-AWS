@@ -16,5 +16,5 @@ jobs:
 
       - name: Trigger Jenkins Job
         run: |
-          curl -X POST "https://16b1-79-177-155-4.ngrok-free.app/job/Deploy-Django-on-AWS/build" \
+          curl -X POST "https://f78d-79-177-146-22.ngrok-free.app/job/Deploy-Django-on-AWS/build" \
             --user "admin:${{ secrets.JENKINS_API_TOKEN }}"
