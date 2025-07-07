@@ -1,3 +1,4 @@
+# Same terraform & provider block
 terraform {
   required_providers {
     aws = {
@@ -7,12 +8,37 @@ terraform {
   }
 }
 
+provider "aws" {
+  region = "ap-south-1"
+}
+
 module "infra" {
   source = "../infrastructure"
 }
 
-provider "aws" {
-  region = "ap-south-1"
+# ECS EC2 IAM Role
+resource "aws_iam_role" "ecs_instance_role" {
+  name = "ecsInstanceRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "ecsInstanceProfile"
+  role = aws_iam_role.ecs_instance_role.name
 }
 
 data "aws_ssm_parameter" "ecs_ami" {
@@ -23,17 +49,13 @@ data "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole"
 }
 
-resource "aws_ecs_cluster" "django_cluster" {
-  name = "django-cluster"
-}
-
-data "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "ecsInstanceProfile"
-}
-
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = data.aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_ecs_cluster" "django_cluster" {
+  name = "django-cluster"
 }
 
 resource "aws_security_group" "ecs_instance_sg" {
@@ -59,13 +81,14 @@ resource "aws_instance" "ecs_instance_a" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_a
-  iam_instance_profile        = data.aws_iam_instance_profile.ecs_instance_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   associate_public_ip_address = false
   security_groups             = [aws_security_group.ecs_instance_sg.id]
 
   user_data = <<-EOF
               #!/bin/bash
               echo ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name} >> /etc/ecs/ecs.config
+              systemctl enable --now ecs
               EOF
 
   tags = {
@@ -77,13 +100,14 @@ resource "aws_instance" "ecs_instance_b" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
   subnet_id                   = module.infra.private_subnet_id_b
-  iam_instance_profile        = data.aws_iam_instance_profile.ecs_instance_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   associate_public_ip_address = false
   security_groups             = [aws_security_group.ecs_instance_sg.id]
 
   user_data = <<-EOF
               #!/bin/bash
               echo ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name} >> /etc/ecs/ecs.config
+              systemctl enable --now ecs
               EOF
 
   tags = {
@@ -97,21 +121,21 @@ resource "aws_ecs_task_definition" "django_task" {
   requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn        = data.aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn       = data.aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = data.aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([{
     name      = "django-container"
-    image     = var.ecr_repo_url
+    image     = var.ecr_repo_url,
     portMappings = [{
       containerPort = 8000
       hostPort      = 8000
       protocol      = "tcp"
-    }]
+    }],
     environment = [{
       name  = "DATABASE_URL"
-      value = "djangodb"
-    }]
+      value = "postgres://user:pass@rds-endpoint:5432/dbname"
+    }],
     essential = true
   }])
 }

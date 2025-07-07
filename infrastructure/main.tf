@@ -11,63 +11,51 @@ provider "aws" {
   region = "ap-south-1"
 }
 
+# VPC
 resource "aws_vpc" "main" {
-  cidr_block       = "10.0.0.0/16"
-  instance_tenancy = "default"
-
+  cidr_block = "10.0.0.0/16"
   tags = {
     Name = "main_cicd_vpc"
   }
 }
 
+# Internet Gateway
 resource "aws_internet_gateway" "main_gw" {
   vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "main_internet_gw"
-  }
+  tags = { Name = "main_internet_gw" }
 }
 
+# Public Subnets
 resource "aws_subnet" "subnet_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
   availability_zone = "ap-south-1a"
-
-  tags = {
-    Name = "subnet_cicd_a"
-  }
+  tags = { Name = "subnet_cicd_a" }
 }
 
 resource "aws_subnet" "subnet_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.2.0/24"
   availability_zone = "ap-south-1b"
-
-  tags = {
-    Name = "subnet_cicd_b"
-  }
+  tags = { Name = "subnet_cicd_b" }
 }
 
+# Private Subnets
 resource "aws_subnet" "private_subnet_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.3.0/24"
   availability_zone = "ap-south-1a"
-
-  tags = {
-    Name = "private_subnet_cicd_a"
-  }
+  tags = { Name = "private_subnet_cicd_a" }
 }
 
 resource "aws_subnet" "private_subnet_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.4.0/24"
   availability_zone = "ap-south-1b"
-
-  tags = {
-    Name = "private_subnet_cicd_b"
-  }
+  tags = { Name = "private_subnet_cicd_b" }
 }
 
+# NAT Gateway
 resource "aws_eip" "nat" {
   domain = "vpc"
 }
@@ -77,9 +65,9 @@ resource "aws_nat_gateway" "nat_gw" {
   subnet_id     = aws_subnet.subnet_a.id
 }
 
+# Route Tables
 resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.main.id
-
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main_gw.id
@@ -98,7 +86,6 @@ resource "aws_route_table_association" "b_public" {
 
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main.id
-
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_nat_gateway.nat_gw.id
@@ -115,6 +102,7 @@ resource "aws_route_table_association" "b_private" {
   route_table_id = aws_route_table.private_rt.id
 }
 
+# Security Group for ALB
 resource "aws_security_group" "alb_sg" {
   name   = "alb-sg"
   vpc_id = aws_vpc.main.id
@@ -132,24 +120,15 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = {
-    Name = "alb-security-group"
-  }
 }
 
+# ALB
 resource "aws_alb" "app_LoadBalancer" {
   name               = "django-LoadBalancer"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
-
-  enable_deletion_protection = false
-
-  tags = {
-    Environment = "production"
-  }
 }
 
 resource "aws_alb_target_group" "app_tg" {
@@ -167,10 +146,6 @@ resource "aws_alb_target_group" "app_tg" {
     unhealthy_threshold = 2
     matcher             = "200"
   }
-
-  tags = {
-    Name = "Django-tg"
-  }
 }
 
 resource "aws_alb_listener" "http" {
@@ -181,5 +156,15 @@ resource "aws_alb_listener" "http" {
   default_action {
     type             = "forward"
     target_group_arn = aws_alb_target_group.app_tg.arn
+  }
+}
+
+# DB Subnet Group
+resource "aws_db_subnet_group" "django_db_subnet_group" {
+  name       = "django-db-subnet-group"
+  subnet_ids = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id]
+
+  tags = {
+    Name = "Django DB Subnet Group"
   }
 }
