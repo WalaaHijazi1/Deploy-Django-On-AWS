@@ -66,7 +66,7 @@ resource "aws_iam_role_policy_attachment" "ecr_access" {
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "ecsInstanceProfile-4"
+  name = "ecsInstanceProfile-11"
   role = aws_iam_role.ecs_instance_role.name
 }
 
@@ -89,14 +89,6 @@ resource "aws_vpc_endpoint" "ecr_api" {
   security_group_ids  = [aws_security_group.ecs_instance_sg.id]  # Use existing SG
   subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
   private_dns_enabled = true
-}
-
-# In ECS main.tf
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = module.infra.vpc_id
-  service_name      = "com.amazonaws.ap-south-1.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [module.infra.private_route_table_id]  # Use infra module's route table
 }
 
 
@@ -278,18 +270,6 @@ resource "aws_ecs_task_definition" "django_task" {
   }])
 }
 
-# Secrets Manager for DB URL ==========================================
-resource "aws_secretsmanager_secret" "django_db" {
-  name = "django-db-credentials"
-}
-
-resource "aws_secretsmanager_secret_version" "db_url" {
-  secret_id = aws_secretsmanager_secret.django_db.id
-  secret_string = jsonencode({
-    url = "mysql://${aws_db_instance.default.username}:${var.aws_db_password}@${aws_db_instance.default.endpoint}/${aws_db_instance.default.db_name}"
-  })
-}
-
 # ECS Service =========================================================
 resource "aws_ecs_service" "django_service" {
   name            = "django-service"
@@ -313,7 +293,6 @@ resource "aws_ecs_service" "django_service" {
     aws_iam_role_policy_attachment.ecr_access,
     aws_db_instance.default,
     aws_vpc_endpoint.ecr_dkr,
-    aws_vpc_endpoint.ecr_api,
-    aws_vpc_endpoint.s3
+    aws_vpc_endpoint.ecr_api
   ]
 }
