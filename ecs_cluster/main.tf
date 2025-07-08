@@ -257,7 +257,7 @@ resource "aws_instance" "ecs_instance_b" {
 # ECS Task Definition =================================================
 resource "aws_ecs_task_definition" "django_task" {
   family                   = "django-task-${md5(timestamp())}"
-  network_mode             = "awsvpc"
+  network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "512"
