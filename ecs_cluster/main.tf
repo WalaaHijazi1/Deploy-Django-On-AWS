@@ -21,7 +21,7 @@ data "aws_ssm_parameter" "ecs_ami" {
 
 # IAM Roles ===========================================================
 resource "aws_iam_role" "ecs_instance_role" {
-  name = "ecsInstanceRole-${md5(timestamp())}"
+  name = "ecsInstanceRole"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -167,7 +167,7 @@ resource "aws_security_group" "ecs_task_sg" {
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"
-    security_groups = [module.infra.alb_sg_id]
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   egress {
@@ -214,6 +214,7 @@ resource "aws_instance" "ecs_instance_a" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
+  depends_on                  = [module.infra.nat_gw]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -236,6 +237,7 @@ resource "aws_instance" "ecs_instance_b" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
+  depends_on                  = [module.infra.nat_gw]
 
   user_data = <<-EOF
               #!/bin/bash

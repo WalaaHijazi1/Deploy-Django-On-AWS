@@ -22,3 +22,7 @@ output "db_subnet_group_name" {
 output "private_route_table_id" {
   value = aws_route_table.private_rt.id
 }
+
+output "nat_gw" {
+  value = aws_nat_gateway.nat_gw
+}
