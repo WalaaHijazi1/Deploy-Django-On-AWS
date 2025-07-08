@@ -1,10 +1,11 @@
 import os
 import environ
 
+
 # Load .env
 # Initializes the environment variable handler.
 # Loads variables from the .env file in the root of your Django project into memory.
-env = environ.ENV()
+env = environ.Env()
 environ.Env.read_env()
 
 # Base Directory:

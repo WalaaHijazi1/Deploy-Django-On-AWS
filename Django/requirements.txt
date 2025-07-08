@@ -4,4 +4,4 @@ mysqlclient==2.2.0
 sqlparse
 packaging
 asgiref
-environ
+django-environ
