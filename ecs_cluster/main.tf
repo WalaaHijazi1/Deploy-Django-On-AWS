@@ -304,7 +304,7 @@ resource "aws_ecs_service" "django_service" {
   launch_type     = "EC2"
 
   network_configuration {
-    subnets         = [module.infra.private_subnet_id_a, module.infra.private_subnet_id_b]
+    subnets         = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
     security_groups = [aws_security_group.ecs_task_sg.id]
   }
 
