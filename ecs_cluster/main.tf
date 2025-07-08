@@ -305,11 +305,6 @@ resource "aws_ecs_service" "django_service" {
   desired_count   = 2
   launch_type     = "EC2"
 
-  network_configuration {
-    subnets         = module.infra.private_subnet_ids
-    security_groups = [aws_security_group.ecs_task_sg.id]
-  }
-
   load_balancer {
     target_group_arn = module.infra.target_group_arn
     container_name   = "django-container"
