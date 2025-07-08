@@ -1,8 +1,7 @@
 django
-gunicorn         # Run time binary for django
-psycopg2-binary  # Driver that allows django to connect to sql
+gunicorn
+mysqlclient==2.2.0
 sqlparse
 packaging
 asgiref
 environ
-mysqlclient==2.2.0

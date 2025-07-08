@@ -1,5 +1,4 @@
 import os
-import pymysql
 import environ
 
 # Load .env
