@@ -131,6 +131,31 @@ resource "aws_security_group" "ecs_instance_sg" {
   }
 }
 
+resource "aws_security_group" "ecs_task_sg" {
+  name        = "ecs-task-sg-${md5(timestamp())}"
+  description = "Allow ALB access to tasks"
+  vpc_id      = module.infra.vpc_id
+
+  ingress {
+    description     = "Allow from ALB"
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [module.infra.alb_sg_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
+}
+
 resource "aws_security_group" "rds_sg" {
   name        = "rds-sg-${md5(timestamp())}"
   description = "Allow ECS tasks to access RDS"
@@ -156,31 +181,6 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
-
-resource "aws_security_group" "ecs_task_sg" {
-  name        = "ecs-task-sg-${md5(timestamp())}"
-  description = "Allow ALB access to tasks"
-  vpc_id      = module.infra.vpc_id
-
-  ingress {
-    description     = "Allow from ALB"
-    from_port       = 8000
-    to_port         = 8000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  lifecycle {
-    ignore_changes = [name]
-  }
-}
 
 # RDS Database ========================================================
 resource "aws_db_instance" "default" {
