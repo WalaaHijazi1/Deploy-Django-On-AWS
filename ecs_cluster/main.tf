@@ -156,6 +156,7 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
+
 resource "aws_security_group" "ecs_task_sg" {
   name        = "ecs-task-sg-${md5(timestamp())}"
   description = "Allow ALB access to tasks"
@@ -249,6 +250,7 @@ resource "aws_instance" "ecs_instance_b" {
     ignore_changes = [tags]
   }
 }
+
 
 # ECS Task Definition =================================================
 resource "aws_ecs_task_definition" "django_task" {

@@ -142,7 +142,7 @@ resource "aws_alb_target_group" "app_tg" {
   target_type = "ip"  # Changed from "instance" to "ip"
 
   health_check {
-    path                = "/"
+    path                = "/health/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
