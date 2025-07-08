@@ -66,7 +66,7 @@ resource "aws_iam_role_policy_attachment" "ecr_access" {
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "ecsInstanceProfile-3"
+  name = "ecsInstanceProfile-4"
   role = aws_iam_role.ecs_instance_role.name
 }
 
@@ -255,11 +255,6 @@ resource "aws_ecs_task_definition" "django_task" {
       containerPort = 8000
       hostPort      = 8000  # Fixed for ALB routing
       protocol      = "tcp"
-    }]
-
-    secrets = [{
-      name      = "DATABASE_URL"
-      valueFrom = "${aws_secretsmanager_secret.django_db.arn}:url::"  # Reference secret
     }]
 
     essential = true
