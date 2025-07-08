@@ -28,5 +28,6 @@ output "nat_gw" {
 }
 
 output "alb_dns" {
-  value = aws_alb.app_LoadBalancer.dns
+  description = "The DNS name of the Application Load Balancer"
+  value       = aws_alb.app_LoadBalancer.dns_name
 }
