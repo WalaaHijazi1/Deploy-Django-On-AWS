@@ -66,7 +66,7 @@ resource "aws_iam_role_policy_attachment" "ecr_access" {
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "ecsInstanceProfile_4"
+  name = "ecsInstanceProfile-3"
   role = aws_iam_role.ecs_instance_role.name
 }
 
