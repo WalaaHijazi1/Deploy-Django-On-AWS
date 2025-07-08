@@ -21,7 +21,7 @@ data "aws_ssm_parameter" "ecs_ami" {
 
 # IAM Roles ===========================================================
 resource "aws_iam_role" "ecs_instance_role" {
-  name = "ecsInstanceRole"
+  name = "ecsInstanceRole-${md5(timestamp())}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -30,6 +30,10 @@ resource "aws_iam_role" "ecs_instance_role" {
       Action = "sts:AssumeRole"
     }]
   })
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_instance_policy" {
@@ -43,7 +47,7 @@ resource "aws_iam_role_policy_attachment" "ecs_ecr_access" {
 }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
+  name = "ecsTaskExecutionRole-${md5(timestamp())}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -52,9 +56,12 @@ resource "aws_iam_role" "ecs_task_execution_role" {
       Action = "sts:AssumeRole"
     }]
   })
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
-# Add ECR permissions to task execution role
 resource "aws_iam_role_policy_attachment" "ecs_task_exec_attach" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
@@ -66,18 +73,20 @@ resource "aws_iam_role_policy_attachment" "ecr_access" {
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "ecsInstanceProfile-11"
+  name = "ecsInstanceProfile-${md5(timestamp())}"
   role = aws_iam_role.ecs_instance_role.name
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
-# Create private route table ===========================================
-
-# In ECS main.tf
+# VPC Endpoints for ECR ================================================
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = module.infra.vpc_id
   service_name        = "com.amazonaws.ap-south-1.ecr.dkr"
   vpc_endpoint_type   = "Interface"
-  security_group_ids  = [aws_security_group.ecs_instance_sg.id]  # Use existing SG
+  security_group_ids  = [aws_security_group.ecs_instance_sg.id]
   subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
   private_dns_enabled = true
 }
@@ -86,18 +95,16 @@ resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = module.infra.vpc_id
   service_name        = "com.amazonaws.ap-south-1.ecr.api"
   vpc_endpoint_type   = "Interface"
-  security_group_ids  = [aws_security_group.ecs_instance_sg.id]  # Use existing SG
+  security_group_ids  = [aws_security_group.ecs_instance_sg.id]
   subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
   private_dns_enabled = true
 }
 
-
 # Security Groups =====================================================
 resource "aws_security_group" "ecs_instance_sg" {
-  name   = "ecs-instance-sg"
+  name   = "ecs-instance-sg-${md5(timestamp())}"
   vpc_id = module.infra.vpc_id
 
-  # Allow ECS agent communication
   ingress {
     from_port   = 0
     to_port     = 0
@@ -105,7 +112,6 @@ resource "aws_security_group" "ecs_instance_sg" {
     self        = true
   }
 
-  # Allow ALB access
   ingress {
     from_port       = 0
     to_port         = 65535
@@ -119,10 +125,14 @@ resource "aws_security_group" "ecs_instance_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_security_group" "rds_sg" {
-  name        = "rds-sg"
+  name        = "rds-sg-${md5(timestamp())}"
   description = "Allow ECS tasks to access RDS"
   vpc_id      = module.infra.vpc_id
 
@@ -140,11 +150,14 @@ resource "aws_security_group" "rds_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
-# ECS Task Security Group
 resource "aws_security_group" "ecs_task_sg" {
-  name        = "ecs-task-sg"
+  name        = "ecs-task-sg-${md5(timestamp())}"
   description = "Allow ALB access to tasks"
   vpc_id      = module.infra.vpc_id
 
@@ -161,6 +174,10 @@ resource "aws_security_group" "ecs_task_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  lifecycle {
+    ignore_changes = [name]
   }
 }
 
@@ -181,16 +198,14 @@ resource "aws_db_instance" "default" {
 
 # ECS Resources =======================================================
 resource "aws_ecs_cluster" "django_cluster" {
-  name = "django-cluster"
+  name = "django-cluster-${md5(timestamp())}"
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
-# CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "ecs_logs" {
-  name              = "/ecs/django-task"
-  retention_in_days = 7
-}
-
-# ECS Instances (updated) =============================================
+# ECS Instances =======================================================
 resource "aws_instance" "ecs_instance_a" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
@@ -202,11 +217,14 @@ resource "aws_instance" "ecs_instance_a" {
   user_data = <<-EOF
               #!/bin/bash
               echo "ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name}" >> /etc/ecs/ecs.config
-              echo "ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=10m" >> /etc/ecs/ecs.config
               EOF
 
   tags = {
-    Name = "ecs-instance-a"
+    Name = "ecs-instance-a-${md5(timestamp())}"
+  }
+  
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
@@ -221,23 +239,26 @@ resource "aws_instance" "ecs_instance_b" {
   user_data = <<-EOF
               #!/bin/bash
               echo "ECS_CLUSTER=${aws_ecs_cluster.django_cluster.name}" >> /etc/ecs/ecs.config
-              echo "ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=10m" >> /etc/ecs/ecs.config
               EOF
 
   tags = {
-    Name = "ecs-instance-b"
+    Name = "ecs-instance-b-${md5(timestamp())}"
+  }
+  
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
 # ECS Task Definition =================================================
 resource "aws_ecs_task_definition" "django_task" {
-  family                   = "django-task"
+  family                   = "django-task-${md5(timestamp())}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn  # Use same role
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([{
     name      = "django-container"
@@ -245,20 +266,18 @@ resource "aws_ecs_task_definition" "django_task" {
     
     portMappings = [{
       containerPort = 8000
-      hostPort      = 8000  # Fixed for ALB routing
+      hostPort      = 8000
       protocol      = "tcp"
     }]
 
-    essential = true
-
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name,
-        "awslogs-region"        = "ap-south-1",
-        "awslogs-stream-prefix" = "ecs"
+    environment = [
+      {
+        name  = "DATABASE_URL",
+        value = "mysql://${aws_db_instance.default.username}:${var.aws_db_password}@${aws_db_instance.default.endpoint}/${aws_db_instance.default.db_name}"
       }
-    }
+    ]
+
+    essential = true
 
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
@@ -268,18 +287,22 @@ resource "aws_ecs_task_definition" "django_task" {
       startPeriod = 60
     }
   }])
+  
+  lifecycle {
+    ignore_changes = [family]
+  }
 }
 
 # ECS Service =========================================================
 resource "aws_ecs_service" "django_service" {
-  name            = "django-service"
+  name            = "django-service-${md5(timestamp())}"
   cluster         = aws_ecs_cluster.django_cluster.id
   task_definition = aws_ecs_task_definition.django_task.arn
   desired_count   = 2
   launch_type     = "EC2"
 
   network_configuration {
-    subnets         = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
+    subnets         = module.infra.private_subnet_ids
     security_groups = [aws_security_group.ecs_task_sg.id]
   }
 
@@ -295,4 +318,8 @@ resource "aws_ecs_service" "django_service" {
     aws_vpc_endpoint.ecr_dkr,
     aws_vpc_endpoint.ecr_api
   ]
+  
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
