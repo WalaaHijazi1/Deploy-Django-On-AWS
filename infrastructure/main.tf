@@ -142,7 +142,7 @@ resource "aws_alb_target_group" "app_tg" {
   target_type = "instance"  # Must be instance for EC2 bridge/host mode
 
   health_check {
-    path                = "/health/"
+    path                = "/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
