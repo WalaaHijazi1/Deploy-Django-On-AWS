@@ -139,7 +139,7 @@ resource "aws_alb_target_group" "app_tg" {
   port        = 8000  # Must match container port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip"  # Changed from "instance" to "ip"
+  target_type = "instance"  # Must be instance for EC2 bridge/host mode
 
   health_check {
     path                = "/health/"
