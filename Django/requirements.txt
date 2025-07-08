@@ -5,3 +5,4 @@ sqlparse
 packaging
 asgiref
 environ
+mysqlclient==2.2.0

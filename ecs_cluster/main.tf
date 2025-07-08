@@ -274,12 +274,31 @@ resource "aws_ecs_task_definition" "django_task" {
       protocol      = "tcp"
     }]
 
-    environment = [
-      {
-        name  = "DATABASE_URL",
-        value = "mysql://${aws_db_instance.default.username}:${var.aws_db_password}@${aws_db_instance.default.endpoint}/${aws_db_instance.default.db_name}"
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/django-task"
+        "awslogs-region"        = "ap-south-1"
+        "awslogs-stream-prefix" = "ecs"
       }
+    }
+
+    environment = [
+      { name = "DB_NAME",     value = aws_db_instance.default.db_name },
+      { name = "DB_USER",     value = aws_db_instance.default.username },
+      { name = "DB_PASSWORD", value = var.aws_db_password },
+      { name = "DB_HOST",     value = aws_db_instance.default.address },
+      { name = "DB_PORT",     value = "3306" },
+      { name = "DJANGO_DEBUG", value = "False" },
+      { name = "ALLOWED_HOSTS", value = module.infra.alb_dns }
     ]
+
+
+
+    environment = [{
+      name  = "DATABASE_URL"
+      value = "mysql://${aws_db_instance.default.username}:${var.aws_db_password}@${aws_db_instance.default.endpoint}/${aws_db_instance.default.db_name}"
+    }]
 
     essential = true
 
@@ -304,6 +323,7 @@ resource "aws_ecs_service" "django_service" {
   task_definition = aws_ecs_task_definition.django_task.arn
   desired_count   = 2
   launch_type     = "EC2"
+
 
   load_balancer {
     target_group_arn = module.infra.target_group_arn

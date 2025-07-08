@@ -26,3 +26,7 @@ output "private_route_table_id" {
 output "nat_gw" {
   value = aws_nat_gateway.nat_gw
 }
+
+output "alb_dns" {
+  value = aws_alb.app_LoadBalancer.dns
+}
