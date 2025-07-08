@@ -20,7 +20,8 @@ DEBUG = env.bool('DJANGO_DEBUG','False') == 'True'
 
 # Ensures that only requests from specific hosts (like your ALB DNS name) are allowed.
 # Prevents HTTP Host header attacks.
-ALLOWED_HOSTS = [env('ALOWED_HOST')]  # Or specify your domain / ALB DNS
+ALLOWED_HOSTS = [env('ALLOWED_HOST')]
+
 
 # PostgreSQL Database Configuration
 # Configures Django to connect to a PostgreSQL database.
