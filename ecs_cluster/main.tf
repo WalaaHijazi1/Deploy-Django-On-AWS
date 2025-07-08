@@ -105,6 +105,7 @@ resource "aws_security_group" "ecs_instance_sg" {
   name   = "ecs-instance-sg-${md5(timestamp())}"
   vpc_id = module.infra.vpc_id
 
+   # Allow ECS tasks to talk to each other (optional)
   ingress {
     from_port   = 0
     to_port     = 0
@@ -113,10 +114,10 @@ resource "aws_security_group" "ecs_instance_sg" {
   }
 
   ingress {
-    from_port       = 0
-    to_port         = 65535
-    protocol        = "tcp"
-    security_groups = [module.infra.alb_sg_id]
+  from_port       = 8000
+  to_port         = 8000
+  protocol        = "tcp"
+  security_groups = [module.infra.alb_sg_id]
   }
 
   egress {
