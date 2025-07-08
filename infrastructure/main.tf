@@ -136,10 +136,10 @@ resource "aws_alb" "app_LoadBalancer" {
 
 resource "aws_alb_target_group" "app_tg" {
   name        = "django-target-group"
-  port        = 80
+  port        = 8000  # Must match container port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "instance"
+  target_type = "ip"  # Changed from "instance" to "ip"
 
   health_check {
     path                = "/"
@@ -151,6 +151,16 @@ resource "aws_alb_target_group" "app_tg" {
   }
 }
 
+resource "aws_alb_listener" "http" {
+  load_balancer_arn = aws_alb.app_LoadBalancer.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.app_tg.arn
+  }
+}
 resource "aws_alb_listener" "http" {
   load_balancer_arn = aws_alb.app_LoadBalancer.arn
   port              = 80
