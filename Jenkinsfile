@@ -18,24 +18,26 @@ pipeline {
         stage('Check And Create Bucket'){
             steps{
                 withCredentials([aws(credentialsId: 'aws-credentials')]) {
-                    def checkCommand = "aws s3api head-bucket --bucket ${bucketName}"
-                    def bucketExists = sh (script: "${checkCommand}", returnStatus : true ) == 0
+                    script {
+                        def checkCommand = "aws s3api head-bucket --bucket ${bucketName}"
+                        def bucketExists = sh (script: "${checkCommand}", returnStatus : true ) == 0
 
-                    if (bucketExists) {
-                        echo "s3 bucket does exist with terraform state in it!"
+                        if (bucketExists) {
+                            echo "s3 bucket does exist with terraform state in it!"
+                        }
+                        else {
+                            echo "s3 bucket does not exist, a new one will be created!"
+                            sh "aws s3api create-bucket --bucket ${bucketName} --region ${region} --create-bucket-configuration LocationConstraint=${region}"
+                            echo "s3 buckket is created in region ap-south-1 under the name ${bucketName}"
+                        }
+
+                        // Write the bucket name into a .tfvars file for Terraform
+
+                        writeFile file: 'env.auto.tfvars', text: """
+                        bucket_name = "${bucketName}"
+                        region      = "${region}"
+                        """
                     }
-                    else {
-                        echo "s3 bucket does not exist, a new one will be created!"
-                        sh "aws s3api create-bucket --bucket ${bucketName} --region ${region} --create-bucket-configuration LocationConstraint=${region}"
-                        echo "s3 buckket is created in region ap-south-1 under the name ${bucketName}"
-                    }
-
-                    // Write the bucket name into a .tfvars file for Terraform
-
-                    writeFile file: 'env.auto.tfvars', text: """
-                    bucket_name = "${bucketName}"
-                    region      = "${region}"
-                    """
                 }
             }
         }
