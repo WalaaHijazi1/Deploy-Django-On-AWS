@@ -8,12 +8,19 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "ap-south-1"
+# reading outputs from the infra's state file in S3.
+data "terraform_remote_state" "infra" {
+  backend = "s3"
+  config = {
+    bucket = "django-terraform-state-files"
+    key    = "infra/terraform.tfstate"
+    region = "ap-south-1"
+  }
 }
 
-module "infra" {
-  source = "../infrastructure"
+
+provider "aws" {
+  region = "ap-south-1"
 }
 
 data "aws_ssm_parameter" "ecs_ami" {
@@ -84,27 +91,27 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 
 # VPC Endpoints for ECR ================================================
 resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id              = module.infra.vpc_id
+  vpc_id              = data.terraform_remote_state.infra.outputs.vpc_id
   service_name        = "com.amazonaws.ap-south-1.ecr.dkr"
   vpc_endpoint_type   = "Interface"
   security_group_ids  = [aws_security_group.ecs_instance_sg.id]
-  subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
+  subnet_ids          = data.terraform_remote_state.infra.outputs.private_subnet_ids
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id              = module.infra.vpc_id
+  vpc_id              = data.terraform_remote_state.infra.outputs.vpc_id
   service_name        = "com.amazonaws.ap-south-1.ecr.api"
   vpc_endpoint_type   = "Interface"
   security_group_ids  = [aws_security_group.ecs_instance_sg.id]
-  subnet_ids          = [module.infra.private_subnet_ids[0], module.infra.private_subnet_ids[1]]
+  subnet_ids          = data.terraform_remote_state.infra.outputs.private_subnet_ids
   private_dns_enabled = true
 }
 
 # Security Groups =====================================================
 resource "aws_security_group" "ecs_instance_sg" {
   name   = "ecs-instance-sg-${md5(timestamp())}"
-  vpc_id = module.infra.vpc_id
+  vpc_id = data.terraform_remote_state.infra.outputs.vpc_id
 
    # Allow ECS tasks to talk to each other (optional)
   ingress {
@@ -118,7 +125,7 @@ resource "aws_security_group" "ecs_instance_sg" {
   from_port       = 8000
   to_port         = 8000
   protocol        = "tcp"
-  security_groups = [module.infra.alb_sg_id]
+  security_groups = [data.terraform_remote_state.infra.outputs.alb_sg_id]
   }
 
   egress {
@@ -136,14 +143,14 @@ resource "aws_security_group" "ecs_instance_sg" {
 resource "aws_security_group" "ecs_task_sg" {
   name        = "ecs-task-sg-${md5(timestamp())}"
   description = "Allow ALB access to tasks"
-  vpc_id      = module.infra.vpc_id
+  vpc_id      = data.terraform_remote_state.infra.outputs.vpc_id
 
   ingress {
     description     = "Allow from ALB"
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"
-    security_groups = [module.infra.alb_sg_id]
+    security_groups = [data.terraform_remote_state.infra.outputs.alb_sg_id]
   }
 
   egress {
@@ -161,7 +168,7 @@ resource "aws_security_group" "ecs_task_sg" {
 resource "aws_security_group" "rds_sg" {
   name        = "rds-sg-${md5(timestamp())}"
   description = "Allow ECS tasks to access RDS"
-  vpc_id      = module.infra.vpc_id
+  vpc_id      = data.terraform_remote_state.infra.outputs.vpc_id
 
   ingress {
     description     = "MySQL from ECS tasks"
@@ -194,7 +201,7 @@ resource "aws_db_instance" "default" {
   username               = "admin2511"
   password               = var.aws_db_password
   parameter_group_name   = "default.mysql8.0"
-  db_subnet_group_name   = module.infra.db_subnet_group_name
+  db_subnet_group_name   = data.terraform_remote_state.infra.outputs.db_subnet_group_name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
   skip_final_snapshot    = true
 }
@@ -212,11 +219,11 @@ resource "aws_ecs_cluster" "django_cluster" {
 resource "aws_instance" "ecs_instance_a" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
-  subnet_id                   = module.infra.private_subnet_ids[0]
+  subnet_id                   = data.terraform_remote_state.infra.outputs.private_subnet_ids[0]
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
-  depends_on                  = [module.infra.nat_gw]
+  depends_on                  = [data.terraform_remote_state.infra.outputs.nat_gw]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -235,11 +242,11 @@ resource "aws_instance" "ecs_instance_a" {
 resource "aws_instance" "ecs_instance_b" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
-  subnet_id                   = module.infra.private_subnet_ids[1]
+  subnet_id                   = data.terraform_remote_state.infra.outputs.private_subnet_ids
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
-  depends_on                  = [module.infra.nat_gw]
+  depends_on                  = [data.terraform_remote_state.infra.outputs.nat_gw]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -292,7 +299,7 @@ resource "aws_ecs_task_definition" "django_task" {
       { name = "DB_HOST",     value = aws_db_instance.default.address },
       { name = "DB_PORT",     value = "3306" },
       { name = "DJANGO_DEBUG", value = "False" },
-      { name = "ALLOWED_HOSTS", value = module.infra.alb_dns }
+      { name = "ALLOWED_HOSTS", value = data.terraform_remote_state.infra.outputs.alb_dns }
     ]
 
 
@@ -328,7 +335,7 @@ resource "aws_ecs_service" "django_service" {
 
 
   load_balancer {
-    target_group_arn = module.infra.target_group_arn
+    target_group_arn = data.terraform_remote_state.infra.outputs.target_group_arn
     container_name   = "django-container"
     container_port   = 8000
   }

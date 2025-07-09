@@ -52,7 +52,7 @@ pipeline {
                             sh """
                                 terraform init \\
                                     -backend-config=\"bucket=${bucketName}\" \\
-                                    -backend-config=\"key=infra/terraform.tfstate\" \\
+                                    -backend-config=\"key=ecr_folder/terraform.tfstate\" \\
                                     -backend-config=\"region=${region}\" \\
                                     -backend-config=\"encrypt=true\"
                             """
@@ -127,6 +127,41 @@ pipeline {
                 }
             }
         }
+        stage('Infrastructure Creation'){
+            steps{
+                dir('infrastructure') {
+                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
+                        script {
+                            // Init and Import
+                            sh """
+                                # For infrastructure stage
+                                terraform init \
+                                    -backend-config="bucket=django-terraform-state-files" \
+                                    -backend-config="key=infra/terraform.tfstate" \
+                                    -backend-config="region=ap-south-1"
+
+                                terraform import aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole || true
+                            """
+
+                            // Run plan and capture exit code
+                            def exitCode = sh(
+                                script: "terraform plan -detailed-exitcode -var=\"ecr_repo_url=${env.ECR_REPO}\"",
+                                returnStatus: true
+                            )
+
+                            if (exitCode == 2) {
+                                echo "Changes detected — applying infrastructure..."
+                                sh "terraform apply -auto-approve -var=\"ecr_repo_url=${env.ECR_REPO}\""
+                            } else if (exitCode == 0) {
+                                echo "No changes detected — skipping apply."
+                            } else {
+                                error("Terraform plan failed with exit code ${exitCode}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
         stage('Terraform Apply ECS') {
             steps {
                 dir('ecs_cluster') {
@@ -136,7 +171,7 @@ pipeline {
                             sh """
                                 terraform init \\
                                     -backend-config="bucket=${bucketName}" \\
-                                    -backend-config="key=infra/terraform.tfstate" \\
+                                    -backend-config="key=ecs/terraform.tfstate" \\
                                     -backend-config="region=${region}" \\
                                     -backend-config="encrypt=true"
 
