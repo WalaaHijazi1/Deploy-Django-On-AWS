@@ -15,28 +15,34 @@ pipeline {
                 git credentialsId: 'my_secret_token', branch: 'main', url: 'https://github.com/WalaaHijazi1/Deploy-Django-On-AWS.git'
             }
         }
-        stage('Check And Create Bucket'){
-            steps{
+        stage('Check And Create Bucket') {
+            steps {
                 withCredentials([aws(credentialsId: 'aws-credentials')]) {
                     script {
-                        def checkCommand = "aws s3api head-bucket --bucket ${bucketName}"
-                        def bucketExists = sh (script: "${checkCommand}", returnStatus : true ) == 0
+                        // Debug print
+                        echo "Checking if S3 bucket '${bucketName}' exists in region '${region}'..."
+
+                        // Run the check command and capture exit code
+                        def bucketExists = sh(script: "aws s3api head-bucket --bucket ${bucketName}", returnStatus: true) == 0
 
                         if (bucketExists) {
-                            echo "s3 bucket does exist with terraform state in it!"
-                        }
-                        else {
-                            echo "s3 bucket does not exist, a new one will be created!"
-                            sh "aws s3api create-bucket --bucket ${bucketName} --region ${region} --create-bucket-configuration LocationConstraint=${region}"
-                            echo "s3 buckket is created in region ap-south-1 under the name ${bucketName}"
+                            echo "S3 bucket does exist with terraform state in it!"
+                        } else {
+                            echo "S3 bucket does not exist, creating new one..."
+
+                            // Create bucket command, with region config fixed
+                            sh """
+                            aws s3api create-bucket --bucket ${bucketName} --region ${region} --create-bucket-configuration LocationConstraint=${region}
+                            """
+
+                            echo "S3 bucket '${bucketName}' created in region ${region}."
                         }
 
-                        // Write the bucket name into a .tfvars file for Terraform
-
+                        // Write bucket name and region to a terraform vars file
                         writeFile file: 'env.auto.tfvars', text: """
-                        bucket_name = "${bucketName}"
-                        region      = "${region}"
-                        """
+        bucket_name = "${bucketName}"
+        region      = "${region}"
+        """
                     }
                 }
             }
