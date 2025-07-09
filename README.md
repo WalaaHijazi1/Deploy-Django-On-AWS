@@ -85,7 +85,6 @@ _**NOTE:** EC2 Launch Type was used to give more control over networking, instan
 ### Post Actions
 * The pipeline sends an email to my email address:
 * The build result (SUCCESS, FAILURE, etc.)
-* Attached Terraform state files
 * Jenkins console log (optional)
 * This acts as a deployment confirmation and audit log.
 #### An Example of the message that I recieved after the pipeline was done:
