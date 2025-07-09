@@ -18,7 +18,7 @@ pipeline {
         stage('Check And Create Bucket') {
             steps {
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials')]) {
+                    withCredentials([aws(credentialsId: 'aws_credentials')]) {
                         echo "Checking if bucket ${bucketName} exists..."
 
                         def checkCommand = "aws s3api head-bucket --bucket ${bucketName}"
