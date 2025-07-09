@@ -242,7 +242,7 @@ resource "aws_instance" "ecs_instance_a" {
 resource "aws_instance" "ecs_instance_b" {
   ami                         = data.aws_ssm_parameter.ecs_ami.value
   instance_type               = "t3.micro"
-  subnet_id                   = data.terraform_remote_state.infra.outputs.private_subnet_ids
+  subnet_id                   = data.terraform_remote_state.infra.outputs.private_subnet_ids[1]
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
