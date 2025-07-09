@@ -76,9 +76,6 @@ _**NOTE:** EC2 Launch Type was used to give more control over networking, instan
 #### The Infrastructure of the Project:
 <img src="./images/infrastructure_img.png"  width="750" height="750">
 
-#### The Infrastructure and Flow of Data in the ECS Cluster:
-<img src="./images/ECS_workflow.png"  width="500" height="420">
-
 ### Terraform State Storage in S3
 #### By separating Terraform state files per module (ECR, infrastructure, ECS), each part of the system becomes independently manageable. This allows for modular deployment and minimizes blast radius on changes:
 * ecr_repository/terraform.tfstate → Stored under ecr_folder/ in S3
@@ -98,19 +95,23 @@ _**NOTE:** EC2 Launch Type was used to give more control over networking, instan
 ### Django
 Django is a high-level Python web framework that promotes rapid development and clean design. It uses Python for backend logic and HTML/CSS/JS for frontend. In this project, Django serves as the core application we're deploying. <br/>
 
+#### The Flow of Data From the Internet to the private instance that has the service:
+<img src="./images/flow_of_data.png"  width="1500" height="210">
+
 ### Docker
 Docker packages applications and their dependencies into isolated environments called containers. We build a Docker image for our Django app and use it across all environments, ensuring consistency. <br/>
 ### Amazon ECR (Elastic Container Registry)
 ECR is AWS’s fully managed container image registry. In our setup: <br/>
 * We push the Django Docker image to ECR.
 * ECS tasks later pull this image to run containers.
-## A Flow of Data in ECS, From pulling te image to running the task in the instance:
-<img src="./images/ECS_workflow.PNG"  width="700" height="350">
-
 ### Amazon ECS (Elastic Container Service)
 ECS allows us to run and scale containerized applications on AWS. In this project:
 * We use the EC2 launch type (ECS runs containers on EC2 instances).
 * The ECS service runs our Django app using the Docker image stored in ECR.
+
+## A diagram that shows how ECS Cluster is created and functions, from the point of pulling image from ECR to the start of a service:
+<img src="./images/ECS_workflow.PNG"  width="700" height="350">
+
 ### Terraform
 Terraform is used for Infrastructure as Code:
 * Creates the VPC, subnets, EC2s, ECS cluster, security groups, RDS, etc.
