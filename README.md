@@ -1,4 +1,4 @@
-# ✧･ﾟ: ✧･ﾟ:  𝔻𝕖𝕡𝕝𝕠𝕪𝕚𝕟𝕘 𝕒 𝔻𝕛𝕒𝕟𝕘𝕠 𝔸𝕡𝕡𝕝𝕚𝕔𝕒𝕥𝕚𝕠𝕟 𝕠𝕟 𝔸𝕎𝕊 𝕌𝕤𝕚𝕟𝕘 𝕋𝕖𝕣𝕣𝕒𝕗𝕠𝕣𝕞, 𝕁𝕖𝕟𝕜𝕚𝕟𝕤, 𝕒𝕟𝕕 𝔾𝕚𝕥ℍ𝕦𝕓 𝔸𝕔𝕥𝕚𝕠𝕟𝕤   :･ﾟ✧:･ﾟ✧
+## ✧･ﾟ: ✧･ﾟ:  𝔻𝕖𝕡𝕝𝕠𝕪𝕚𝕟𝕘 𝕒 𝔻𝕛𝕒𝕟𝕘𝕠 𝔸𝕡𝕡𝕝𝕚𝕔𝕒𝕥𝕚𝕠𝕟 𝕠𝕟 𝔸𝕎𝕊 𝕌𝕤𝕚𝕟𝕘 𝕋𝕖𝕣𝕣𝕒𝕗𝕠𝕣𝕞, 𝕁𝕖𝕟𝕜𝕚𝕟𝕤, 𝕒𝕟𝕕 𝔾𝕚𝕥ℍ𝕦𝕓 𝔸𝕔𝕥𝕚𝕠𝕟𝕤   :･ﾟ✧:･ﾟ✧
 
 
 In this project, we deploy a Django-based web application on AWS ECS (Elastic Container Service) using Terraform for Infrastructure as Code (IaC). The application is containerized with Docker, the image is stored in ECR (Elastic Container Registry), and the infrastructure is managed entirely through automated CI/CD using Jenkins and GitHub Actions. We also use S3 as the Terraform backend and RDS for the database layer.
