@@ -19,23 +19,18 @@ pipeline {
             steps {
                 withCredentials([aws(credentialsId: 'aws-credentials')]) {
                     script {
-                        // Debug print
-                        echo "Checking if S3 bucket '${bucketName}' exists in region '${region}'..."
-
-                        // Run the check command and capture exit code
+                        echo "Checking if bucket exists..."
                         def bucketExists = sh(script: "aws s3api head-bucket --bucket ${bucketName}", returnStatus: true) == 0
+                        echo "Bucket exists? ${bucketExists}"
 
                         if (bucketExists) {
                             echo "S3 bucket does exist with terraform state in it!"
                         } else {
-                            echo "S3 bucket does not exist, creating new one..."
-
-                            // Create bucket command, with region config fixed
+                            echo "S3 bucket does not exist, creating..."
                             sh """
                             aws s3api create-bucket --bucket ${bucketName} --region ${region} --create-bucket-configuration LocationConstraint=${region}
                             """
-
-                            echo "S3 bucket '${bucketName}' created in region ${region}."
+                            echo "Bucket created."
                         }
 
                         // Write bucket name and region to a terraform vars file
@@ -43,6 +38,7 @@ pipeline {
         bucket_name = "${bucketName}"
         region      = "${region}"
         """
+                        }
                     }
                 }
             }
