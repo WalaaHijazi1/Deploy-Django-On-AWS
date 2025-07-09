@@ -38,7 +38,6 @@ pipeline {
         bucket_name = "${bucketName}"
         region      = "${region}"
         """
-                        }
                     }
                 }
             }
