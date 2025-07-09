@@ -17,27 +17,29 @@ pipeline {
         }
         stage('Check And Create Bucket') {
             steps {
-                withCredentials([aws(credentialsId: 'aws-credentials')]) {
-                    script {
-                        echo "Checking if bucket exists..."
-                        def bucketExists = sh(script: "aws s3api head-bucket --bucket ${bucketName}", returnStatus: true) == 0
-                        echo "Bucket exists? ${bucketExists}"
+                script {
+                    withCredentials([aws(credentialsId: 'aws-credentials')]) {
+                        echo "Checking if bucket ${bucketName} exists..."
+
+                        def checkCommand = "aws s3api head-bucket --bucket ${bucketName}"
+                        def bucketExists = sh(script: checkCommand, returnStatus: true) == 0
 
                         if (bucketExists) {
-                            echo "S3 bucket does exist with terraform state in it!"
+                            echo "S3 bucket already exists: ${bucketName}"
                         } else {
-                            echo "S3 bucket does not exist, creating..."
+                            echo "S3 bucket does not exist. Creating..."
                             sh """
-                            aws s3api create-bucket --bucket ${bucketName} --region ${region} --create-bucket-configuration LocationConstraint=${region}
+                                aws s3api create-bucket --bucket ${bucketName} --region ${region} \
+                                --create-bucket-configuration LocationConstraint=${region}
                             """
-                            echo "Bucket created."
+                            echo "S3 bucket created: ${bucketName}"
                         }
 
-                        // Write bucket name and region to a terraform vars file
                         writeFile file: 'env.auto.tfvars', text: """
-        bucket_name = "${bucketName}"
-        region      = "${region}"
-        """
+                        bucket_name = "${bucketName}"
+                        region      = "${region}"
+                        """
+                        echo "env.auto.tfvars written successfully."
                     }
                 }
             }
