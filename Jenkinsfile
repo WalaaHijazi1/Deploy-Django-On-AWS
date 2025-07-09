@@ -145,13 +145,13 @@ pipeline {
 
                             // Run plan and capture exit code
                             def exitCode = sh(
-                                script: "terraform plan -detailed-exitcode -var=\"ecr_repo_url=${env.ECR_REPO}\"",
+                                script: "terraform plan -detailed-exitcode",
                                 returnStatus: true
                             )
 
                             if (exitCode == 2) {
                                 echo "Changes detected — applying infrastructure..."
-                                sh "terraform apply -auto-approve -var=\"ecr_repo_url=${env.ECR_REPO}\""
+                                sh "terraform apply -auto-approve"
                             } else if (exitCode == 0) {
                                 echo "No changes detected — skipping apply."
                             } else {
