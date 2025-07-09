@@ -1,4 +1,5 @@
 terraform {
+  backend "s3" {}
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -10,7 +11,6 @@ terraform {
 provider "aws" {
   region = "ap-south-1"
 }
-
 
 # VPC
 resource "aws_vpc" "main" {
