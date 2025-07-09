@@ -18,7 +18,7 @@ When a developer pushes code to the main branch, GitHub Actions automatically tr
 #### **Running the command: 'ngrok http 8080', exposed my local Jenkins to GitHub Actions,**
 #### **in this way github actions had the ability to trigger Jenkins start the pipeline**
 #### **A Screen shot of the ngrok connection:** 
-<img src="./images/ngrok-sonnection-github-CI-automation.PNG"  width="900" height="950">
+<img src="./images/ngrok-sonnection-github-CI-automation.PNG"  width="700" height="700">
 
 ### Jenkins Pipeline Stages
 #### Stage 1: Clean Workspace
@@ -74,10 +74,10 @@ Pulls the latest code from the GitHub repo (Deploy-Django-On-AWS) including:
 _**NOTE:** EC2 Launch Type was used to give more control over networking, instance scaling, and to avoid additional Fargate costs._
 
 #### The Infrastructure of the Project:
-<img src="./images/infrastructure_img.png"  width="900" height="950">
+<img src="./images/infrastructure_img.png"  width="750" height="750">
 
 #### The Infrastructure and Flow of Data in the ECS Cluster:
-<img src="./images/ECs_tasks_map.png"  width="500" height="420">
+<img src="./images/ECS_workflow.png"  width="500" height="420">
 
 ### Terraform State Storage in S3
 #### By separating Terraform state files per module (ECR, infrastructure, ECS), each part of the system becomes independently manageable. This allows for modular deployment and minimizes blast radius on changes:
@@ -97,8 +97,6 @@ _**NOTE:** EC2 Launch Type was used to give more control over networking, instan
 ## Technologies Used
 ### Django
 Django is a high-level Python web framework that promotes rapid development and clean design. It uses Python for backend logic and HTML/CSS/JS for frontend. In this project, Django serves as the core application we're deploying. <br/>
-## Accessing Django Service from the internet flow:
-<img src="./images/Acess_Django.png"  width="700" height="350">
 
 ### Docker
 Docker packages applications and their dependencies into isolated environments called containers. We build a Docker image for our Django app and use it across all environments, ensuring consistency. <br/>
