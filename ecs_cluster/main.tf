@@ -55,7 +55,7 @@ resource "aws_iam_role_policy_attachment" "ecs_ecr_access" {
 }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole-${md5(timestamp())}"
+  name = "ecsTaskExecutionRole"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -223,7 +223,7 @@ resource "aws_instance" "ecs_instance_a" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
-  depends_on                  = [data.terraform_remote_state.infra.outputs.nat_gw]
+  depends_on                  = [data.terraform_remote_state.infra]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -246,7 +246,7 @@ resource "aws_instance" "ecs_instance_b" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.ecs_instance_sg.id]
   associate_public_ip_address = false
-  depends_on                  = [data.terraform_remote_state.infra.outputs.nat_gw]
+  depends_on                  = [data.terraform_remote_state.infra]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -301,13 +301,6 @@ resource "aws_ecs_task_definition" "django_task" {
       { name = "DJANGO_DEBUG", value = "False" },
       { name = "ALLOWED_HOSTS", value = data.terraform_remote_state.infra.outputs.alb_dns }
     ]
-
-
-
-    environment = [{
-      name  = "DATABASE_URL"
-      value = "mysql://${aws_db_instance.default.username}:${var.aws_db_password}@${aws_db_instance.default.endpoint}/${aws_db_instance.default.db_name}"
-    }]
 
     essential = true
 
